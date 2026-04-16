@@ -6,7 +6,7 @@ import { generateQuestions } from '@/lib/questions';
 import { getPointsForCoordinate } from '@/lib/locations';
 
 export default function NearMe() {
-  const [screen, setScreen]           = useState('start');
+  const [screen, setScreen]           = useState('landing');
   const [errorMsg, setErrorMsg]       = useState('');
   const [progress, setProgress]       = useState(0);
   const [loadingText, setLoadingText] = useState('Initialising...');
@@ -103,18 +103,57 @@ export default function NearMe() {
 
   return (
     <div className="container">
+      {/* Landing — mode select */}
+      {screen === 'landing' && (
+        <div className="screen" style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 48, marginBottom: 8 }}>{'\uD83D\uDCCD'}</div>
+          <h1 style={{ fontSize: 42, marginBottom: 4 }}>NearMe</h1>
+          <p style={{ color: '#999', fontSize: 13, marginBottom: 16 }}>v0.5.0</p>
+          <p style={{ color: '#555', fontSize: 18, marginBottom: 36, lineHeight: 1.5 }}>
+            How well do you <em>really</em> know your neighbourhood?
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 320, margin: '0 auto' }}>
+            <button
+              onClick={() => setScreen('start')}
+              style={{ width: '100%', padding: '18px 24px', fontSize: 18 }}
+            >
+              {'\uD83C\uDFAF'} Play Solo
+            </button>
+            <a href="/multiplayer/host" style={{ textDecoration: 'none' }}>
+              <button
+                type="button"
+                style={{ width: '100%', padding: '18px 24px', fontSize: 18, background: '#764ba2' }}
+              >
+                {'\uD83D\uDC65'} Play with Friends
+              </button>
+            </a>
+            <a href="/multiplayer/join" style={{ textDecoration: 'none' }}>
+              <button
+                type="button"
+                style={{ width: '100%', padding: '18px 24px', fontSize: 16, background: 'transparent', color: '#667eea', border: '2px solid #667eea' }}
+              >
+                Join a Game
+              </button>
+            </a>
+          </div>
+        </div>
+      )}
+
+      {/* Solo — address entry */}
       {screen === 'start' && (
         <div className="screen">
-          <h1>NearMe <span style={{ fontSize: 14, color: '#999', fontWeight: 'normal' }}>v0.5.0</span></h1>
-          <p className="subtitle">Test your local knowledge with 10 nearby images.</p>
-          <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
-            <a href="/multiplayer" style={{ color: '#667eea', fontSize: 14 }}>Play with friends &rarr;</a>
-          </div>
+          <h1>Solo Mode</h1>
+          <p className="subtitle">10 Street View images near your address. How many can you get?</p>
           <label htmlFor="addressInput" style={{ display: 'block', marginBottom: 10, color: '#333', fontWeight: 'bold' }}>
             Enter your address:
           </label>
           <input ref={addressInputRef} id="addressInput" type="text" placeholder="Start typing your address..." />
           <button disabled={!startBtnEnabled} onClick={startGame}>Let&apos;s go!</button>
+          <div style={{ marginTop: 15 }}>
+            <button onClick={() => setScreen('landing')} style={{ background: 'transparent', color: '#667eea', padding: '8px 16px', fontSize: 14 }}>
+              &larr; Back
+            </button>
+          </div>
         </div>
       )}
 

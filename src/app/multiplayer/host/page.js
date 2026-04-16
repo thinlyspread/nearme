@@ -255,19 +255,23 @@ export default function HostGame() {
     setRevealData(reveal);
     setPlayers(updatedPlayers || []);
 
-    // Broadcast reveal
+    // Broadcast reveal — exclude host from scores if observer
+    const broadcastScores = (updatedPlayers || [])
+      .filter(p => !(isObserver && p.is_host))
+      .map(p => ({
+        player_id: p.id,
+        nickname: p.nickname,
+        total_score: p.total_score,
+        avatar_color: p.avatar_color,
+      }));
+
     channelRef.current?.send({
       type: 'broadcast',
       event: 'question:reveal',
       payload: {
         index: currentQuestion,
         correct_index: correctIndex,
-        scores: (updatedPlayers || []).map(p => ({
-          player_id: p.id,
-          nickname: p.nickname,
-          total_score: p.total_score,
-          avatar_color: p.avatar_color,
-        })),
+        scores: broadcastScores,
       },
     });
 
@@ -286,17 +290,20 @@ export default function HostGame() {
 
       setLeaderboard(finalPlayers || []);
 
+      const finalLeaderboard = (finalPlayers || [])
+        .filter(p => !(isObserver && p.is_host))
+        .map((p, i) => ({
+          rank: i + 1,
+          player_id: p.id,
+          nickname: p.nickname,
+          total_score: p.total_score,
+          avatar_color: p.avatar_color,
+        }));
+
       channelRef.current?.send({
         type: 'broadcast',
         event: 'game:finished',
-        payload: {
-          leaderboard: (finalPlayers || []).map((p, i) => ({
-            rank: i + 1,
-            nickname: p.nickname,
-            total_score: p.total_score,
-            avatar_color: p.avatar_color,
-          })),
-        },
+        payload: { leaderboard: finalLeaderboard },
       });
 
       await db.from('game_rooms').update({ status: 'finished' }).eq('id', roomId);

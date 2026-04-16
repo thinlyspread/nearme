@@ -310,7 +310,7 @@ export default function JoinGame() {
             </div>
           )}
           {hostMode === 'observer' && (
-            <p style={{ textAlign: 'center', color: '#666', marginBottom: 10 }}>Look at the screen!</p>
+            <p style={{ textAlign: 'center', color: '#666', marginBottom: 10 }}>Look at the host's screen!</p>
           )}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, gridAutoRows: '1fr' }}>
             {options.map((opt, idx) => (

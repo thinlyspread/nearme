@@ -358,7 +358,9 @@ export default function HostGame() {
     setScreen('lobby');
   }
 
-  useConfetti(screen === 'finished');
+  // Confetti for observer (always) or host-player who won
+  const hostWon = !isObserver && leaderboard.length > 0 && leaderboard[0]?.id === playerId;
+  useConfetti(screen === 'finished' && (isObserver || hostWon));
 
   // ── Render ─────────────────────────────────────────────
 
@@ -601,7 +603,7 @@ export default function HostGame() {
       {/* Finished */}
       {screen === 'finished' && (
         <div className="screen" style={{ textAlign: 'center' }}>
-          <h1>{'\uD83C\uDFC6'} Final Results!</h1>
+          <h1>Final Results!</h1>
           <div style={{ margin: '30px 0' }}>
             {leaderboard.filter(p => !(isObserver && p.is_host)).map((p, i) => (
               <div key={p.id} style={{
@@ -610,7 +612,7 @@ export default function HostGame() {
                 fontSize: i === 0 ? 28 : i < 3 ? 22 : 18, fontWeight: 'bold',
                 boxShadow: i < 3 ? '0 4px 12px rgba(0,0,0,0.15)' : 'none',
               }}>
-                #{i + 1} {p.nickname} — {p.total_score} pts
+                {i === 0 && '\uD83C\uDFC6 '}#{i + 1} {p.nickname} — {p.total_score} pts
               </div>
             ))}
           </div>

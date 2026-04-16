@@ -283,7 +283,9 @@ export default function JoinGame() {
   const myRank = leaderboard.findIndex(p => p.player_id === playerId);
   const myScore = leaderboard.find(p => p.player_id === playerId);
 
-  useConfetti(screen === 'finished');
+  // Confetti only for the winner
+  const playerWon = leaderboard.length > 0 && leaderboard[0]?.player_id === playerId;
+  useConfetti(screen === 'finished' && playerWon);
 
   return (
     <div className="container">
@@ -432,7 +434,7 @@ export default function JoinGame() {
       {/* Finished */}
       {screen === 'finished' && (
         <div className="screen" style={{ textAlign: 'center' }}>
-          <h1>{'\uD83C\uDFC6'} Final Results!</h1>
+          <h1>Final Results!</h1>
           {myScore && (
             <div style={{
               background: '#f0f0ff', borderRadius: 8, padding: '12px 20px',
@@ -454,7 +456,7 @@ export default function JoinGame() {
                 boxShadow: i < 3 ? '0 4px 12px rgba(0,0,0,0.15)' : 'none',
                 border: p.player_id === playerId ? '3px solid #667eea' : 'none',
               }}>
-                #{p.rank} {p.nickname} — {p.total_score} pts
+                {p.rank === 1 && '\uD83C\uDFC6 '}#{p.rank} {p.nickname} — {p.total_score} pts
               </div>
             ))}
           </div>

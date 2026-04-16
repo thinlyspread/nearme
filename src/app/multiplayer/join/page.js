@@ -33,8 +33,92 @@ export default function JoinGame() {
   // Final leaderboard
   const [leaderboard, setLeaderboard] = useState([]);
 
-  const channelRef = useRef(null);
-  const timerRef   = useRef(null);
+  const channelRef       = useRef(null);
+  const timerRef         = useRef(null);
+  const lastSyncedIndex  = useRef(-1);
+
+  // Sync with DB when phone wakes up or broadcast was missed
+  async function syncWithRoom() {
+    if (!roomId) return;
+
+    const { data: room } = await db
+      .from('game_rooms')
+      .select('*')
+      .eq('id', roomId)
+      .single();
+
+    if (!room) return;
+
+    if (room.status === 'finished') {
+      const { data: finalPlayers } = await db
+        .from('game_players')
+        .select('*')
+        .eq('room_id', roomId)
+        .order('total_score', { ascending: false });
+      setLeaderboard((finalPlayers || []).map((p, i) => ({
+        rank: i + 1, nickname: p.nickname, total_score: p.total_score,
+        avatar_color: p.avatar_color, player_id: p.id,
+      })));
+      setScreen('finished');
+      return;
+    }
+
+    if (room.status === 'lobby') {
+      setScreen('waiting');
+      return;
+    }
+
+    if (room.status === 'playing' && room.questions && room.current_question_index >= 0) {
+      const qi = room.current_question_index;
+
+      // Check if we already answered this question
+      const { data: existing } = await db
+        .from('game_answers')
+        .select('*')
+        .eq('room_id', roomId)
+        .eq('player_id', playerId)
+        .eq('question_index', qi)
+        .maybeSingle();
+
+      if (existing) {
+        // Already answered — show answered screen
+        setAnswerResult({ is_correct: existing.is_correct, points: existing.points_awarded, time_taken_ms: existing.time_taken_ms });
+        setScreen('answered');
+      } else {
+        // Haven't answered — show question
+        const q = room.questions[qi];
+        if (q) {
+          setQuestionIndex(qi);
+          setTotalQuestions(room.questions.length);
+          setOptions(q.options);
+          setImageUrl(q.image_url || '');
+          setStartedAt(room.question_started_at);
+          setAnswerResult(null);
+          setScreen('question');
+        }
+      }
+      lastSyncedIndex.current = qi;
+    }
+  }
+
+  // Re-sync when page becomes visible (phone unlocked)
+  useEffect(() => {
+    if (!roomId) return;
+    function onVisibilityChange() {
+      if (document.visibilityState === 'visible') {
+        syncWithRoom();
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, [roomId, playerId]);
+
+  // Periodic sync as fallback (every 5s during active game)
+  useEffect(() => {
+    if (!roomId || screen === 'enter-code' || screen === 'finished') return;
+    const interval = setInterval(syncWithRoom, 5000);
+    return () => clearInterval(interval);
+  }, [roomId, screen, playerId]);
 
   // Poll players in waiting room
   useEffect(() => {

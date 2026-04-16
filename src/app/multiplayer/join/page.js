@@ -41,14 +41,13 @@ export default function JoinGame() {
   const [leaderboard, setLeaderboard] = useState([]);
 
   const channelRef       = useRef(null);
+  const pgChannelRef     = useRef(null);
   const timerRef         = useRef(null);
-  const lastSyncedIndex  = useRef(-1);
-  const screenRef        = useRef(screen);
-  screenRef.current = screen;
 
-  // Sync with DB when phone wakes up or broadcast was missed
+  // Core sync: read room state from DB and move to the correct screen.
+  // This is the single source of truth — broadcasts are just fast hints.
   async function syncWithRoom() {
-    if (!roomId) return;
+    if (!roomId || !playerId) return;
 
     const { data: room } = await db
       .from('game_rooms')
@@ -79,15 +78,7 @@ export default function JoinGame() {
 
     if (room.status === 'playing' && room.questions && room.current_question_index >= 0) {
       const qi = room.current_question_index;
-
-      // Don't sync backwards — if we're on reveal/answered for the same question,
-      // the broadcast already moved us forward. Only sync if the DB question index
-      // is ahead of what we last saw, or if we're genuinely stuck.
-      const currentScreen = screenRef.current;
-      const isOnRevealOrAnswered = currentScreen === 'reveal' || currentScreen === 'answered';
-      if (isOnRevealOrAnswered && qi === lastSyncedIndex.current) {
-        return; // Don't fight the broadcast
-      }
+      const isRevealed = room.question_started_at === null; // host nulls this on reveal
 
       // Check if we already answered this question
       const { data: existing } = await db
@@ -98,45 +89,76 @@ export default function JoinGame() {
         .eq('question_index', qi)
         .maybeSingle();
 
-      if (existing) {
-        // Already answered — only move to answered if we're not already on reveal
-        if (currentScreen !== 'reveal') {
+      if (isRevealed) {
+        // Reveal phase — fetch scores and show reveal screen
+        const { data: updatedPlayers } = await db
+          .from('game_players')
+          .select('*')
+          .eq('room_id', roomId)
+          .order('total_score', { ascending: false });
+
+        if (existing) {
           setAnswerResult({ is_correct: existing.is_correct, points: existing.points_awarded, time_taken_ms: existing.time_taken_ms });
-          setScreen('answered');
         }
+        setRevealScores((updatedPlayers || []).map(p => ({
+          player_id: p.id, nickname: p.nickname,
+          total_score: p.total_score, avatar_color: p.avatar_color,
+        })));
+        // Get correct answer name from stored question
+        const q = room.questions[qi];
+        if (q) setCorrectName(q.options[q.correct_index]?.name || '');
+        setScreen('reveal');
+      } else if (existing) {
+        // Question phase but already answered — wait
+        setAnswerResult({ is_correct: existing.is_correct, points: existing.points_awarded, time_taken_ms: existing.time_taken_ms });
+        setScreen('answered');
       } else {
-        // Haven't answered — show question
+        // Question phase, not answered — show question
         const q = room.questions[qi];
         if (q) {
           setQuestionIndex(qi);
           setTotalQuestions(room.questions.length);
           setOptions(q.options);
           setImageUrl(q.image_url || '');
+          if (q.host_mode) setHostMode(q.host_mode);
           setStartedAt(room.question_started_at);
           setAnswerResult(null);
           setScreen('question');
         }
       }
-      lastSyncedIndex.current = qi;
     }
   }
+
+  // Subscribe to Postgres Changes on game_rooms — fires on every DB update.
+  // This is the reliable sync mechanism (survives disconnects, replays on reconnect).
+  useEffect(() => {
+    if (!roomId) return;
+
+    const channel = db.channel(`pg-room-${roomId}`)
+      .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'game_rooms', filter: `id=eq.${roomId}` },
+        () => { syncWithRoom(); }
+      )
+      .subscribe();
+
+    pgChannelRef.current = channel;
+    return () => { channel.unsubscribe(); };
+  }, [roomId, playerId]);
 
   // Re-sync when page becomes visible (phone unlocked)
   useEffect(() => {
     if (!roomId) return;
     function onVisibilityChange() {
-      if (document.visibilityState === 'visible') {
-        syncWithRoom();
-      }
+      if (document.visibilityState === 'visible') syncWithRoom();
     }
     document.addEventListener('visibilitychange', onVisibilityChange);
     return () => document.removeEventListener('visibilitychange', onVisibilityChange);
   }, [roomId, playerId]);
 
-  // Periodic sync as fallback (every 5s during active game)
+  // Periodic fallback sync (every 8s)
   useEffect(() => {
     if (!roomId || screen === 'enter-code' || screen === 'finished') return;
-    const interval = setInterval(syncWithRoom, 5000);
+    const interval = setInterval(syncWithRoom, 8000);
     return () => clearInterval(interval);
   }, [roomId, screen, playerId]);
 

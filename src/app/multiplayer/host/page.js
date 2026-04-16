@@ -235,6 +235,11 @@ export default function HostGame() {
     const q = questions[currentQuestion];
     const correctIndex = q.options.findIndex(o => o.isCorrect);
 
+    // Signal reveal in DB — null timestamp tells sync "reveal has happened"
+    await db.from('game_rooms').update({
+      question_started_at: null,
+    }).eq('id', roomId);
+
     // Fetch answers for this question
     const { data: answers } = await db
       .from('game_answers')

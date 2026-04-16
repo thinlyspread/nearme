@@ -352,6 +352,12 @@ export default function JoinGame() {
       {/* Reveal — now show correct/wrong */}
       {screen === 'reveal' && (
         <div className="screen" style={{ textAlign: 'center' }}>
+          {imageUrl && hostMode === 'player' && (
+            <div style={{ textAlign: 'center', margin: '0 0 10px' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={imageUrl} alt="Street View" style={{ maxWidth: '100%', borderRadius: 8 }} />
+            </div>
+          )}
           {answerResult && (
             <div style={{ margin: '10px 0 20px' }}>
               <div style={{ fontSize: 48 }}>{answerResult.is_correct ? '\u2713' : '\u2717'}</div>

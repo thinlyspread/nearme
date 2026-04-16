@@ -409,7 +409,11 @@ export default function HostGame() {
             </div>
           )}
           <div style={{ margin: '20px 0' }}>
-            <h3 style={{ marginBottom: 10 }}>Players ({players.length}/8)</h3>
+            <h3 style={{ marginBottom: 10 }}>
+              {isObserver
+                ? `${players.length - 1} player${players.length - 1 !== 1 ? 's' : ''}, 1 host`
+                : `${players.length} players`} (max 8)
+            </h3>
             {players.map(p => (
               <div key={p.id} style={{
                 display: 'inline-block', margin: 5, padding: '8px 16px',
@@ -420,7 +424,9 @@ export default function HostGame() {
             ))}
           </div>
           <button disabled={players.length < 2} onClick={startGameGeneration}>
-            {players.length < 2 ? 'Waiting for players...' : `Start Game (${players.length} players)`}
+            {players.length < 2 ? 'Waiting for players...'
+              : isObserver ? `Start Game (${players.length - 1} player${players.length - 1 !== 1 ? 's' : ''})`
+              : `Start Game (${players.length} players)`}
           </button>
         </div>
         );
@@ -526,6 +532,12 @@ export default function HostGame() {
         return (
         <div className="screen" style={{ textAlign: 'center' }}>
           <h2>Answer: {revealData.correct_name}</h2>
+          {q && (
+            <div style={{ textAlign: 'center', margin: '10px 0' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={q.image_url} alt="Street View" style={{ maxWidth: 500, width: '100%', borderRadius: 8, boxShadow: '0 4px 8px rgba(0,0,0,0.2)' }} />
+            </div>
+          )}
           {hostAnswer && (
             <div style={{ margin: '10px 0 20px' }}>
               <div style={{ fontSize: 48 }}>{hostAnswer.is_correct ? '\u2713' : '\u2717'}</div>

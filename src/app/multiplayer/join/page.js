@@ -37,6 +37,8 @@ export default function JoinGame() {
   const channelRef       = useRef(null);
   const timerRef         = useRef(null);
   const lastSyncedIndex  = useRef(-1);
+  const screenRef        = useRef(screen);
+  screenRef.current = screen;
 
   // Sync with DB when phone wakes up or broadcast was missed
   async function syncWithRoom() {
@@ -72,6 +74,15 @@ export default function JoinGame() {
     if (room.status === 'playing' && room.questions && room.current_question_index >= 0) {
       const qi = room.current_question_index;
 
+      // Don't sync backwards — if we're on reveal/answered for the same question,
+      // the broadcast already moved us forward. Only sync if the DB question index
+      // is ahead of what we last saw, or if we're genuinely stuck.
+      const currentScreen = screenRef.current;
+      const isOnRevealOrAnswered = currentScreen === 'reveal' || currentScreen === 'answered';
+      if (isOnRevealOrAnswered && qi === lastSyncedIndex.current) {
+        return; // Don't fight the broadcast
+      }
+
       // Check if we already answered this question
       const { data: existing } = await db
         .from('game_answers')
@@ -82,9 +93,11 @@ export default function JoinGame() {
         .maybeSingle();
 
       if (existing) {
-        // Already answered — show answered screen
-        setAnswerResult({ is_correct: existing.is_correct, points: existing.points_awarded, time_taken_ms: existing.time_taken_ms });
-        setScreen('answered');
+        // Already answered — only move to answered if we're not already on reveal
+        if (currentScreen !== 'reveal') {
+          setAnswerResult({ is_correct: existing.is_correct, points: existing.points_awarded, time_taken_ms: existing.time_taken_ms });
+          setScreen('answered');
+        }
       } else {
         // Haven't answered — show question
         const q = room.questions[qi];

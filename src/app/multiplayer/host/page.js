@@ -617,9 +617,9 @@ export default function HostGame() {
               </div>
             ))}
           </div>
-          <button onClick={playAgain}>Play Again</button>
+          <button onClick={playAgain}>Play Again!</button>
           <div style={{ marginTop: 10 }}>
-            <a href="/" style={{ color: '#667eea', fontSize: 14 }}>Solo mode</a>
+            <a href="/" style={{ color: '#667eea', fontSize: 14 }}>Back to menu</a>
           </div>
         </div>
       )}

@@ -6,7 +6,7 @@
 -- =============================================================================
 
 -- Enable UUID extension (usually already enabled on Supabase)
-extension if not exists "uuid-ossp";
+create extension if not exists "uuid-ossp";
 
 -- -----------------------------------------------------------------------------
 -- TABLE: location_library

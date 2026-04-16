@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState, useEffect, useCallback } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import { db } from '@/lib/supabase';
 import { generateQuestions } from '@/lib/questions';
 import { getPointsForCoordinate } from '@/lib/locations';
@@ -298,13 +299,20 @@ export default function HostGame() {
       )}
 
       {/* Lobby */}
-      {screen === 'lobby' && (
+      {screen === 'lobby' && (() => {
+        const joinUrl = typeof window !== 'undefined'
+          ? `${window.location.origin}/multiplayer/join`
+          : '';
+        return (
         <div className="screen" style={{ textAlign: 'center' }}>
           <h2>Join Code</h2>
           <div style={{ fontSize: 72, fontWeight: 'bold', color: '#667eea', letterSpacing: 8, margin: '20px 0' }}>{joinCode}</div>
-          <p style={{ color: '#666', marginBottom: 20 }}>
-            Go to <strong>nearme.vercel.app/multiplayer/join</strong> and enter the code above
-          </p>
+          {joinUrl && (
+            <div style={{ margin: '20px 0' }}>
+              <QRCodeSVG value={joinUrl} size={180} />
+              <p style={{ color: '#666', marginTop: 10, fontSize: 14 }}>Scan to join, then enter code <strong>{joinCode}</strong></p>
+            </div>
+          )}
           <div style={{ margin: '20px 0' }}>
             <h3 style={{ marginBottom: 10 }}>Players ({players.length}/8)</h3>
             {players.map(p => (
@@ -320,7 +328,8 @@ export default function HostGame() {
             {players.length < 2 ? 'Waiting for players...' : `Start Game (${players.length} players)`}
           </button>
         </div>
-      )}
+        );
+      })()}
 
       {/* Loading */}
       {screen === 'loading' && (

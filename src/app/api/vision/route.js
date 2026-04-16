@@ -15,8 +15,12 @@ export async function POST(request) {
 
   const key = process.env.GOOGLE_API_KEY;
 
-  // Build the Google Street View URL server-side so the API key never reaches the client
-  const imageUri = `https://maps.googleapis.com/maps/api/streetview?size=600x400&location=${lat},${lng}&fov=90&source=outdoor&key=${key}`;
+  // Fetch the Street View image and convert to base64.
+  // The imageUri approach fails — Vision API can't reliably fetch Street View URLs.
+  const imageUrl = `https://maps.googleapis.com/maps/api/streetview?size=600x400&location=${lat},${lng}&fov=90&source=outdoor&key=${key}`;
+  const imageRes = await fetch(imageUrl);
+  const imageBuffer = await imageRes.arrayBuffer();
+  const base64 = Buffer.from(imageBuffer).toString('base64');
 
   const res = await fetch(
     `https://vision.googleapis.com/v1/images:annotate?key=${key}`,
@@ -25,7 +29,7 @@ export async function POST(request) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         requests: [{
-          image: { source: { imageUri } },
+          image: { content: base64 },
           features: [{ type: 'LABEL_DETECTION', maxResults: 20 }]
         }]
       })

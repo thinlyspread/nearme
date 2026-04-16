@@ -428,6 +428,14 @@
         if (!VISION_CONFIG.enabled) return { accept: true, score: 5, reason: 'Disabled' };
 
         try {
+            const blob = await (await fetch(imageUrl)).blob();
+            const base64 = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+
             const res  = await fetch(
                 `https://vision.googleapis.com/v1/images:annotate?key=${CONFIG.googleApiKey}`,
                 {
@@ -435,7 +443,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body:    JSON.stringify({
                         requests: [{
-                            image:    { source: { imageUri: imageUrl } }, // no blob fetch needed
+                            image:    { content: base64 },
                             features: [{ type: 'LABEL_DETECTION', maxResults: 20 }]
                         }]
                     })

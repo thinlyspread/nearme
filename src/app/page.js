@@ -124,7 +124,7 @@ export default function NearMe() {
                 type="button"
                 style={{ width: '100%', padding: '18px 24px', fontSize: 18, background: '#764ba2' }}
               >
-                {'\uD83D\uDC65'} Play with Friends
+                {'\uD83C\uDFE0'} Host Game
               </button>
             </a>
             <a href="/multiplayer/join" style={{ textDecoration: 'none' }}>
@@ -132,7 +132,7 @@ export default function NearMe() {
                 type="button"
                 style={{ width: '100%', padding: '18px 24px', fontSize: 16, background: 'transparent', color: '#667eea', border: '2px solid #667eea' }}
               >
-                Join a Game
+                {'\uD83D\uDD17'} Join Game
               </button>
             </a>
           </div>

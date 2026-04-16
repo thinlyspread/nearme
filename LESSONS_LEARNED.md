@@ -42,3 +42,31 @@ Commit with message "[type]: description" and push to main.
 - By default, RLS blocks anon inserts
 - Temporary policy added: `"Anon insert (temporary)"` on `location_library`
 - Phase 3 TODO: move location saving to a Vercel Edge Function using service role key, then remove anon insert policy
+
+---
+
+## v0.4.0 migration: static HTML → Next.js
+
+### Lesson: imageUri bug will recur if you forget why base64 exists
+
+**What happened:** During the v0.4.0 migration, the Vision API route was written using `imageUri` again — the same approach that broke v0.3.0. The symptom was identical: new locations failed with "No usable Street View images found", while cached locations worked fine. The fix was the same: fetch the image server-side and send as base64.
+
+**Rule:** The Vision API route must always use base64. This is now enforced server-side in `src/app/api/vision/route.js` — the route fetches the Street View image itself and converts to base64 before calling Vision. This is actually better than the old client-side base64 approach because the image never transits through the browser.
+
+### Lesson: Vercel project settings override vercel.json
+
+**What happened:** The old project had `"outputDirectory": "dist"` and `"buildCommand": "node build.js"` set in Vercel project-level settings. Adding a `vercel.json` with `"framework": "nextjs"` to the repo did not override these — the build still looked for `dist/` and failed. The fix required changing settings in the Vercel dashboard (Project Settings > General > Build & Development Settings).
+
+**Rule:** When changing frameworks on an existing Vercel project, always update the dashboard settings — Framework Preset, Build Command, and Output Directory. Turn off all overrides and let the framework defaults take over. `vercel.json` alone is not enough.
+
+### Lesson: Unrelated git histories make merging painful
+
+**What happened:** The v0.4.0 branch was created with `git init` in a fresh directory rather than branching from `main`. This meant GitHub refused to create a PR ("no history in common"), and merging locally required `--allow-unrelated-histories` with manual conflict resolution on every shared file.
+
+**Rule:** Always branch from the existing repo, even for major rewrites. Use `git checkout -b v2-nextjs main` — not `git init`. This preserves history and makes PRs/merges straightforward.
+
+### Lesson: Keep environment variables simple
+
+**What happened:** The initial v0.4.0 setup split the Google API key into two env vars (`NEXT_PUBLIC_GOOGLE_MAPS_KEY` for client-side Maps JS, `GOOGLE_API_KEY` for server-side). This caused confusion — they used the same key. Simplified to just `GOOGLE_API_KEY` for everything.
+
+**Rule:** Don't split a single secret into multiple env vars unless they genuinely hold different values. One key = one env var.

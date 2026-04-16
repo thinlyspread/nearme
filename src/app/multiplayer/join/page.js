@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { db } from '@/lib/supabase';
 import { TIME_LIMIT_MS } from '@/lib/scoring';
+import { useConfetti } from '@/lib/useConfetti';
 
 export default function JoinGame() {
   // Screen: enter-code | waiting | question | answered | reveal | finished
@@ -274,6 +275,8 @@ export default function JoinGame() {
   const myRank = leaderboard.findIndex(p => p.player_id === playerId);
   const myScore = leaderboard.find(p => p.player_id === playerId);
 
+  useConfetti(screen === 'finished');
+
   return (
     <div className="container">
       {/* Enter Code */}
@@ -421,17 +424,27 @@ export default function JoinGame() {
       {/* Finished */}
       {screen === 'finished' && (
         <div className="screen" style={{ textAlign: 'center' }}>
-          <h1>{'\uD83C\uDFC6'} Game Over!</h1>
+          <h1>{'\uD83C\uDFC6'} Final Results!</h1>
           {myScore && (
-            <div style={{ fontSize: 24, margin: '20px 0', color: '#667eea', fontWeight: 'bold' }}>
-              You finished #{myRank + 1} with {myScore.total_score} pts
+            <div style={{
+              background: '#f0f0ff', borderRadius: 8, padding: '12px 20px',
+              margin: '15px auto', maxWidth: 300,
+            }}>
+              <span style={{ fontSize: 13, color: '#999', textTransform: 'uppercase', letterSpacing: 1 }}>Your result</span>
+              <div style={{ fontSize: 28, fontWeight: 'bold', color: '#667eea', marginTop: 4 }}>
+                #{myRank + 1} — {myScore.total_score} pts
+              </div>
             </div>
           )}
           <div style={{ margin: '20px 0' }}>
             {leaderboard.map((p, i) => (
               <div key={p.player_id || i} style={{
-                padding: '10px 0', fontSize: 18, borderBottom: '1px solid #eee',
-                fontWeight: p.player_id === playerId ? 'bold' : 'normal',
+                padding: '15px 20px', margin: '10px auto', maxWidth: 400,
+                borderRadius: 12,
+                background: i === 0 ? '#ffd700' : i === 1 ? '#c0c0c0' : i === 2 ? '#cd7f32' : '#f8f8f8',
+                fontSize: i === 0 ? 28 : i < 3 ? 22 : 18, fontWeight: 'bold',
+                boxShadow: i < 3 ? '0 4px 12px rgba(0,0,0,0.15)' : 'none',
+                border: p.player_id === playerId ? '3px solid #667eea' : 'none',
               }}>
                 #{p.rank} {p.nickname} — {p.total_score} pts
               </div>

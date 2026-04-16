@@ -6,6 +6,7 @@ import { db } from '@/lib/supabase';
 import { generateQuestions } from '@/lib/questions';
 import { getPointsForCoordinate } from '@/lib/locations';
 import { TIME_LIMIT_MS } from '@/lib/scoring';
+import { useConfetti } from '@/lib/useConfetti';
 
 export default function HostGame() {
   // Screen: setup | lobby | loading | question | reveal | finished
@@ -356,6 +357,8 @@ export default function HostGame() {
 
     setScreen('lobby');
   }
+
+  useConfetti(screen === 'finished');
 
   // ── Render ─────────────────────────────────────────────
 

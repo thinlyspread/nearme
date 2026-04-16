@@ -544,9 +544,6 @@ export default function HostGame() {
           <div style={{ textAlign: 'center', margin: '15px 0', color: '#666' }}>
             {answeredCount} of {expectedAnswers} answered
           </div>
-          <div style={{ textAlign: 'center' }}>
-            <button onClick={handleReveal}>Reveal Answer</button>
-          </div>
         </div>
       )}
 

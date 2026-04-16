@@ -9,13 +9,18 @@ body {
   align-items: center;
 }
 
-.container { width: 100%; max-width: 1200px; padding: 20px; }
+.container { width: 100%; max-width: 700px; padding: 20px; }
 
 .screen {
   background: white;
   border-radius: 12px;
   padding: 40px;
   box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+}
+
+.screen-narrow {
+  max-width: 500px;
+  margin: 0 auto;
 }
 
 h1 { color: #333; margin-bottom: 10px; font-size: 32px; }

@@ -371,17 +371,17 @@ export default function HostGame() {
     <div className="container">
       {/* Setup */}
       {screen === 'setup' && (
-        <div className="screen">
+        <div className="screen screen-narrow">
           <h1>Host a Game <span style={{ fontSize: 14, color: '#999', fontWeight: 'normal' }}>v0.5.0</span></h1>
           <p className="subtitle">Set up a multiplayer quiz for your group.</p>
           {errorMsg && <p style={{ color: 'red', marginBottom: 10 }}>{errorMsg}</p>}
-          <label style={{ display: 'block', marginBottom: 10, color: '#333', fontWeight: 'bold' }}>Your nickname:</label>
+          <label style={{ display: 'block', marginBottom: 10, color: '#333', fontWeight: 'bold' }}>Your Nickname:</label>
           <input
             type="text" maxLength={12} placeholder="e.g. Dad"
             value={nickname} onChange={e => { setNickname(e.target.value); setStartBtnEnabled(!!selectedPlaceRef.current && e.target.value.trim().length > 0); }}
-            style={{ width: '100%', padding: 15, fontSize: 16, border: '2px solid #ddd', borderRadius: 8, marginBottom: 20 }}
+            style={{ width: '100%', maxWidth: 300, padding: 15, fontSize: 16, border: '2px solid #ddd', borderRadius: 8, marginBottom: 20 }}
           />
-          <label style={{ display: 'block', marginBottom: 10, color: '#333', fontWeight: 'bold' }}>Host mode:</label>
+          <label style={{ display: 'block', marginBottom: 10, color: '#333', fontWeight: 'bold' }}>Host Mode:</label>
           <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
             <button
               type="button"
@@ -393,7 +393,7 @@ export default function HostGame() {
                 border: '2px solid', borderColor: hostMode === 'player' ? '#667eea' : '#ddd',
               }}
             >
-              Play along
+              Play Along
             </button>
             <button
               type="button"
@@ -405,10 +405,10 @@ export default function HostGame() {
                 border: '2px solid', borderColor: hostMode === 'observer' ? '#667eea' : '#ddd',
               }}
             >
-              Observe only
+              Observe Only
             </button>
           </div>
-          <label style={{ display: 'block', marginBottom: 10, color: '#333', fontWeight: 'bold' }}>Enter your address:</label>
+          <label style={{ display: 'block', marginBottom: 10, color: '#333', fontWeight: 'bold' }}>Enter Your Address:</label>
           <input ref={addressInputRef} id="addressInput" type="text" placeholder="Start typing your address..." />
           <button disabled={!startBtnEnabled} onClick={createRoom}>Create Room</button>
           <div style={{ marginTop: 15 }}><a href="/" style={{ color: '#667eea', fontSize: 14 }}>&larr; Back</a></div>
@@ -421,9 +421,9 @@ export default function HostGame() {
           ? `${window.location.origin}/multiplayer/join`
           : '';
         return (
-        <div className="screen" style={{ textAlign: 'center' }}>
-          <div style={{ background: '#f0f0ff', borderRadius: 8, padding: '12px 20px', marginBottom: 20 }}>
-            <span style={{ fontSize: 13, color: '#999', textTransform: 'uppercase', letterSpacing: 1 }}>Playing near</span>
+        <div className="screen screen-narrow" style={{ textAlign: 'center' }}>
+          <div style={{ background: '#f0f0ff', borderRadius: 8, padding: '12px 20px', marginBottom: 20, wordBreak: 'break-word' }}>
+            <span style={{ fontSize: 13, color: '#999', textTransform: 'uppercase', letterSpacing: 1 }}>Playing Near</span>
             <div style={{ fontSize: 18, fontWeight: 'bold', color: '#333', marginTop: 4 }}>{address}</div>
           </div>
           <h2>Join Code</h2>
@@ -460,7 +460,7 @@ export default function HostGame() {
 
       {/* Loading */}
       {screen === 'loading' && (
-        <div className="screen">
+        <div className="screen screen-narrow">
           <h2 style={{ textAlign: 'center', marginBottom: 20 }}>Generating Quiz...</h2>
           <div className="loading-progress">
             <div className="progress-bar"><div className="progress-fill" style={{ width: `${progress}%` }} /></div>
@@ -535,7 +535,7 @@ export default function HostGame() {
                     {opt.name} ({opt.distance}m)
                     {hostAnswered && idx === hostSelectedIdx && (
                       <span style={{ display: 'block', marginTop: 4, fontSize: 14, opacity: 0.9 }}>
-                        Locked in
+                        Locked In
                       </span>
                     )}
                   </span>
@@ -553,7 +553,7 @@ export default function HostGame() {
       {screen === 'reveal' && revealData && (() => {
         const hostAnswer = !isObserver && revealData.answers.find(a => a.player_id === playerId);
         return (
-        <div className="screen" style={{ textAlign: 'center' }}>
+        <div className="screen screen-narrow" style={{ textAlign: 'center' }}>
           <h2>Answer: {revealData.correct_name}</h2>
           {q && (
             <div style={{ textAlign: 'center', margin: '10px 0' }}>
@@ -602,7 +602,7 @@ export default function HostGame() {
 
       {/* Finished */}
       {screen === 'finished' && (
-        <div className="screen" style={{ textAlign: 'center' }}>
+        <div className="screen screen-narrow" style={{ textAlign: 'center' }}>
           <h1>Final Results!</h1>
           <div style={{ margin: '30px 0' }}>
             {leaderboard.filter(p => !(isObserver && p.is_host)).map((p, i) => (
@@ -618,7 +618,7 @@ export default function HostGame() {
           </div>
           <button onClick={playAgain}>Play Again!</button>
           <div style={{ marginTop: 10 }}>
-            <a href="/" style={{ color: '#667eea', fontSize: 14 }}>Back to menu</a>
+            <a href="/" style={{ color: '#667eea', fontSize: 14 }}>Back to Menu</a>
           </div>
         </div>
       )}

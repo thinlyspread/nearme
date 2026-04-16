@@ -105,7 +105,7 @@ export default function NearMe() {
     <div className="container">
       {/* Landing — mode select */}
       {screen === 'landing' && (
-        <div className="screen" style={{ textAlign: 'center' }}>
+        <div className="screen screen-narrow" style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 48, marginBottom: 8 }}>{'\uD83D\uDCCD'}</div>
           <h1 style={{ fontSize: 42, marginBottom: 4 }}>NearMe</h1>
           <p style={{ color: '#999', fontSize: 13, marginBottom: 16 }}>v0.5.0</p>
@@ -141,14 +141,14 @@ export default function NearMe() {
 
       {/* Solo — address entry */}
       {screen === 'start' && (
-        <div className="screen">
+        <div className="screen screen-narrow">
           <h1>Solo Mode</h1>
           <p className="subtitle">10 Street View images near your address. How many can you get?</p>
           <label htmlFor="addressInput" style={{ display: 'block', marginBottom: 10, color: '#333', fontWeight: 'bold' }}>
-            Enter your address:
+            Enter Your Address:
           </label>
           <input ref={addressInputRef} id="addressInput" type="text" placeholder="Start typing your address..." />
-          <button disabled={!startBtnEnabled} onClick={startGame}>Let&apos;s go!</button>
+          <button disabled={!startBtnEnabled} onClick={startGame}>Let&apos;s Go!</button>
           <div style={{ marginTop: 15 }}>
             <button onClick={() => setScreen('landing')} style={{ background: 'transparent', color: '#667eea', padding: '8px 16px', fontSize: 14 }}>
               &larr; Back
@@ -158,14 +158,14 @@ export default function NearMe() {
       )}
 
       {screen === 'loading' && (
-        <div className="screen">
+        <div className="screen screen-narrow">
           <h2 style={{ textAlign: 'center', marginBottom: 20 }}>Generating Your Quiz...</h2>
           <div className="loading-progress">
             <div className="progress-bar"><div className="progress-fill" style={{ width: `${progress}%` }} /></div>
             <div className="loading-text">{loadingText}</div>
           </div>
-          <div style={{ background: '#f0f0ff', borderRadius: 8, padding: '12px 20px', marginTop: 30, textAlign: 'center' }}>
-            <span style={{ fontSize: 13, color: '#999', textTransform: 'uppercase', letterSpacing: 1 }}>Playing near</span>
+          <div style={{ background: '#f0f0ff', borderRadius: 8, padding: '12px 20px', marginTop: 30, textAlign: 'center', wordBreak: 'break-word' }}>
+            <span style={{ fontSize: 13, color: '#999', textTransform: 'uppercase', letterSpacing: 1 }}>Playing Near</span>
             <div style={{ fontSize: 18, fontWeight: 'bold', color: '#333', marginTop: 4 }}>{address}</div>
           </div>
         </div>
@@ -207,7 +207,7 @@ export default function NearMe() {
       )}
 
       {screen === 'results' && (
-        <div className="screen">
+        <div className="screen screen-narrow">
           <div className="results-screen">
             <h1>{'\uD83C\uDF89'} Game Complete!</h1>
             <div className="final-score">{score}/{questions.length}</div>
@@ -223,7 +223,7 @@ export default function NearMe() {
       )}
 
       {screen === 'error' && (
-        <div className="screen">
+        <div className="screen screen-narrow">
           <div className="error">
             <h2>{'\u26A0\uFE0F'} Error</h2>
             <p>{errorMsg}</p>

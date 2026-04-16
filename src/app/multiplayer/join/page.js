@@ -291,12 +291,12 @@ export default function JoinGame() {
     <div className="container">
       {/* Enter Code */}
       {screen === 'enter-code' && (
-        <div className="screen" style={{ textAlign: 'center' }}>
+        <div className="screen screen-narrow" style={{ textAlign: 'center' }}>
           <h1>Join Game</h1>
           <p className="subtitle">Enter the code shown on the host&apos;s screen</p>
           {errorMsg && <p style={{ color: 'red', marginBottom: 10 }}>{errorMsg}</p>}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-            <label style={{ fontSize: 14, color: '#666', fontWeight: 'bold' }}>Game code</label>
+            <label style={{ fontSize: 14, color: '#666', fontWeight: 'bold' }}>Game Code</label>
             <input
               type="text" maxLength={4} placeholder="ABCD"
               value={joinCode}
@@ -307,7 +307,7 @@ export default function JoinGame() {
                 textTransform: 'uppercase',
               }}
             />
-            <label style={{ fontSize: 14, color: '#666', fontWeight: 'bold', marginTop: 4 }}>Your nickname</label>
+            <label style={{ fontSize: 14, color: '#666', fontWeight: 'bold', marginTop: 4 }}>Your Nickname</label>
             <input
               type="text" maxLength={12} placeholder="e.g. Mum"
               value={nickname} onChange={e => setNickname(e.target.value)}
@@ -324,10 +324,10 @@ export default function JoinGame() {
 
       {/* Waiting */}
       {screen === 'waiting' && (
-        <div className="screen" style={{ textAlign: 'center' }}>
+        <div className="screen screen-narrow" style={{ textAlign: 'center' }}>
           <h2>You&apos;re in!</h2>
-          <div style={{ background: '#f0f0ff', borderRadius: 8, padding: '12px 20px', marginBottom: 20 }}>
-            <span style={{ fontSize: 13, color: '#999', textTransform: 'uppercase', letterSpacing: 1 }}>Playing near</span>
+          <div style={{ background: '#f0f0ff', borderRadius: 8, padding: '12px 20px', marginBottom: 20, wordBreak: 'break-word' }}>
+            <span style={{ fontSize: 13, color: '#999', textTransform: 'uppercase', letterSpacing: 1 }}>Playing Near</span>
             <div style={{ fontSize: 18, fontWeight: 'bold', color: '#333', marginTop: 4 }}>{address}</div>
           </div>
           <p style={{ fontSize: 18, marginBottom: 20 }}>Waiting for host to start...</p>
@@ -384,8 +384,8 @@ export default function JoinGame() {
 
       {/* Answered — waiting for reveal (no correct/wrong shown yet) */}
       {screen === 'answered' && (
-        <div className="screen" style={{ textAlign: 'center' }}>
-          <h2>Answer locked in!</h2>
+        <div className="screen screen-narrow" style={{ textAlign: 'center' }}>
+          <h2>Answer Locked In!</h2>
           <div style={{ margin: '30px 0' }}>
             <div style={{ fontSize: 48 }}>{'\u23F3'}</div>
             {answerResult && (
@@ -400,7 +400,7 @@ export default function JoinGame() {
 
       {/* Reveal — now show correct/wrong */}
       {screen === 'reveal' && (
-        <div className="screen" style={{ textAlign: 'center' }}>
+        <div className="screen screen-narrow" style={{ textAlign: 'center' }}>
           {correctName && <h2>Answer: {correctName}</h2>}
           {imageUrl && hostMode === 'player' && (
             <div style={{ textAlign: 'center', margin: '10px 0' }}>
@@ -437,7 +437,7 @@ export default function JoinGame() {
 
       {/* Finished */}
       {screen === 'finished' && (
-        <div className="screen" style={{ textAlign: 'center' }}>
+        <div className="screen screen-narrow" style={{ textAlign: 'center' }}>
           <h1>Final Results!</h1>
           {myScore && (
             <div style={{

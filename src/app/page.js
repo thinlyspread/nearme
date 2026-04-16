@@ -103,9 +103,20 @@ export default function NearMe() {
   const q   = questions[currentQuestion];
   const pct = questions.length ? Math.round((score / questions.length) * 100) : 0;
 
+  const inputStyle = {
+    width: '100%', padding: 15, fontSize: 16,
+    border: '2px solid #ddd', borderRadius: 8, marginBottom: 15,
+  };
+  const primaryBtn = { width: '100%', padding: '15px 24px', fontSize: 16, background: '#5C6BC0' };
+  const secondaryBtn = {
+    display: 'inline-block', background: '#f0f0f0', color: '#333',
+    padding: '12px 24px', fontSize: 14, border: 'none', borderRadius: 8,
+    cursor: 'pointer', textDecoration: 'none',
+  };
+
   return (
     <div className="container">
-      {/* Landing — mode select */}
+      {/* Landing */}
       {screen === 'landing' && (
         <div className="screen screen-narrow" style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 48, marginBottom: 8 }}>{'\uD83D\uDCCD'}</div>
@@ -115,25 +126,16 @@ export default function NearMe() {
             How well do you <em>really</em> know your neighbourhood?
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 320, margin: '0 auto' }}>
-            <button
-              onClick={() => setScreen('start')}
-              style={{ width: '100%', padding: '18px 24px', fontSize: 18, background: '#5C6BC0' }}
-            >
+            <button onClick={() => setScreen('start')} style={{ ...primaryBtn, background: '#5C6BC0' }}>
               {'\uD83C\uDFAF'} Play Solo
             </button>
             <a href="/multiplayer/host" style={{ textDecoration: 'none' }}>
-              <button
-                type="button"
-                style={{ width: '100%', padding: '18px 24px', fontSize: 18, background: '#7E57C2' }}
-              >
+              <button type="button" style={{ ...primaryBtn, background: '#7E57C2' }}>
                 {'\uD83C\uDFE0'} Host Game
               </button>
             </a>
             <a href="/multiplayer/join" style={{ textDecoration: 'none' }}>
-              <button
-                type="button"
-                style={{ width: '100%', padding: '18px 24px', fontSize: 18, background: '#26A69A' }}
-              >
+              <button type="button" style={{ ...primaryBtn, background: '#26A69A' }}>
                 {'\uD83D\uDD17'} Join Game
               </button>
             </a>
@@ -141,43 +143,45 @@ export default function NearMe() {
         </div>
       )}
 
-      {/* Solo — address entry */}
+      {/* Solo Setup */}
       {screen === 'start' && (
-        <div className="screen screen-narrow">
+        <div className="screen screen-narrow" style={{ textAlign: 'center' }}>
           <h1>Solo Mode</h1>
           <p className="subtitle">10 Street View images near your address. How many can you get?</p>
-          <label htmlFor="addressInput" style={{ display: 'block', marginBottom: 10, color: '#333', fontWeight: 'bold' }}>
+          <label style={{ display: 'block', marginBottom: 8, color: '#333', fontWeight: 'bold', textAlign: 'left' }}>
             Enter Your Address:
           </label>
-          <input ref={addressInputRef} id="addressInput" type="text" placeholder="Start typing your address..." />
-          <button disabled={!startBtnEnabled} onClick={startGame}>Let&apos;s Go!</button>
+          <input ref={addressInputRef} id="addressInput" type="text" placeholder="Start typing your address..." style={inputStyle} />
+          <button disabled={!startBtnEnabled} onClick={startGame} style={primaryBtn}>
+            Let&apos;s Go!
+          </button>
           <div style={{ marginTop: 15 }}>
-            <button onClick={() => setScreen('landing')} style={{ background: '#f0f0f0', color: '#333', padding: '12px 24px', fontSize: 14, border: 'none', borderRadius: 8, cursor: 'pointer' }}>
-              &larr; Back
-            </button>
+            <button onClick={() => setScreen('landing')} style={secondaryBtn}>&larr; Back</button>
           </div>
         </div>
       )}
 
+      {/* Loading */}
       {screen === 'loading' && (
-        <div className="screen screen-narrow">
-          <h2 style={{ textAlign: 'center', marginBottom: 20 }}>Generating Your Quiz...</h2>
+        <div className="screen screen-narrow" style={{ textAlign: 'center' }}>
+          <h2 style={{ marginBottom: 20 }}>Generating Your Quiz...</h2>
           <div className="loading-progress">
             <div className="progress-bar"><div className="progress-fill" style={{ width: `${progress}%` }} /></div>
             <div className="loading-text">{loadingText}</div>
           </div>
-          <div style={{ background: '#f0f0ff', borderRadius: 8, padding: '12px 20px', marginTop: 30, textAlign: 'center', wordBreak: 'break-word' }}>
+          <div style={{ background: '#f0f0ff', borderRadius: 8, padding: '12px 20px', marginTop: 30, wordBreak: 'break-word' }}>
             <span style={{ fontSize: 13, color: '#999', textTransform: 'uppercase', letterSpacing: 1 }}>Playing Near</span>
             <div style={{ fontSize: 18, fontWeight: 'bold', color: '#333', marginTop: 4 }}>{address}</div>
           </div>
         </div>
       )}
 
+      {/* Game */}
       {screen === 'game' && q && (
         <div className="screen">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-            <span className="progress-text">Question {currentQuestion + 1} of {questions.length}</span>
-            <span className="score" style={{ marginBottom: 0 }}>Score: {score}/{answered ? currentQuestion + 1 : currentQuestion}</span>
+            <span style={{ color: '#666', fontSize: 16 }}>Q{currentQuestion + 1}/{questions.length}</span>
+            <span style={{ fontSize: 18, fontWeight: 'bold', color: '#667eea' }}>Score: {score}/{answered ? currentQuestion + 1 : currentQuestion}</span>
           </div>
           <div style={{ textAlign: 'center', margin: '10px 0' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -190,15 +194,9 @@ export default function NearMe() {
               let bg = colors[idx];
               let opacity = 1;
               if (answered) {
-                if (opt.isCorrect) {
-                  bg = '#28a745';
-                  opacity = 1;
-                } else if (idx === selectedIdx) {
-                  bg = '#dc3545';
-                  opacity = 1;
-                } else {
-                  opacity = 0.4;
-                }
+                if (opt.isCorrect) { bg = '#28a745'; }
+                else if (idx === selectedIdx) { bg = '#dc3545'; }
+                else { opacity = 0.4; }
               }
               return (
                 <button
@@ -224,37 +222,38 @@ export default function NearMe() {
             })}
           </div>
           <div style={{ textAlign: 'center', marginTop: 20 }}>
-            <button disabled={!nextEnabled} onClick={nextQuestionHandler}>
+            <button disabled={!nextEnabled} onClick={nextQuestionHandler} style={{ padding: '15px 40px', fontSize: 16 }}>
               {currentQuestion === questions.length - 1 ? 'See Results' : 'Next Question \u2192'}
             </button>
           </div>
         </div>
       )}
 
+      {/* Results */}
       {screen === 'results' && (
         <div className="screen screen-narrow" style={{ textAlign: 'center' }}>
           <h1>Game Complete!</h1>
-          <div className="final-score">{score}/{questions.length}</div>
-          <div className="results-message">
+          <div style={{ fontSize: 64, color: '#667eea', fontWeight: 'bold', margin: '20px 0' }}>{score}/{questions.length}</div>
+          <div style={{ fontSize: 20, color: '#333', marginBottom: 30 }}>
             {pct >= 90 ? '\uD83C\uDFC6 Amazing! You really know your local area!'
               : pct >= 70 ? '\uD83D\uDC4F Great job! You know your neighbourhood well!'
               : pct >= 50 ? '\uD83D\uDC4D Not bad! Time to explore more!'
               : '\uD83D\uDDFA\uFE0F Maybe take a walk around your area!'}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
-            <button onClick={() => window.location.reload()}>Play Again!</button>
-            <a href="/" style={{ display: 'inline-block', background: '#f0f0f0', color: '#333', padding: '12px 24px', fontSize: 14, border: 'none', borderRadius: 8, textDecoration: 'none' }}>Back to Menu</a>
+            <button onClick={() => window.location.reload()} style={{ ...primaryBtn, maxWidth: 320 }}>Play Again!</button>
+            <a href="/" style={secondaryBtn}>Back to Menu</a>
           </div>
         </div>
       )}
 
+      {/* Error */}
       {screen === 'error' && (
-        <div className="screen screen-narrow">
-          <div className="error">
-            <h2>{'\u26A0\uFE0F'} Error</h2>
-            <p>{errorMsg}</p>
-            <button onClick={() => window.location.reload()} style={{ marginTop: 20 }}>Try Again</button>
-          </div>
+        <div className="screen screen-narrow" style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 48, marginBottom: 10 }}>{'\u26A0\uFE0F'}</div>
+          <h2 style={{ color: '#dc3545', marginBottom: 15 }}>Something Went Wrong</h2>
+          <p style={{ color: '#666', marginBottom: 20 }}>{errorMsg}</p>
+          <button onClick={() => window.location.reload()} style={{ ...primaryBtn, maxWidth: 320, background: '#dc3545' }}>Try Again</button>
         </div>
       )}
     </div>

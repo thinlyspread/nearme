@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NearMe</title>
+
+    <!--
+      ============================================================
+      NearMe - v0.2.0
+      Phase 2: Airtable replaced with Supabase
+
+      KEYS — fill these in locally or via Vercel env vars:
+        GOOGLE_API_KEY  → used in the <script src> below + CONFIG
+        SUPABASE_URL    → https://xetizepmyboygaahexno.supabase.co
+        SUPABASE_ANON   → sb_publishable_... (safe to expose)
+
+      Phase 3 will move Google key server-side (Vercel Edge Function)
+      so it is never shipped to the browser.
+      ============================================================
+    -->
+
+    <!-- Google Maps JS (Places Autocomplete) -->
+    <!-- REPLACE: swap GOOGLE_API_KEY_HERE with your key for local dev -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=GOOGLE_API_KEY_HERE&libraries=places"></script>
+
+    <!-- Supabase JS v2 CDN (replaces Airtable) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            padding: 20px;
+        }
+
+        .screen {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+
+        #addressInput {
+            width: 100%;
+            padding: 15px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        #addressInput:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .pac-container {
+            border-radius: 8px;
+            margin-top: 5px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        button:hover:not(:disabled) {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading-progress {
+            margin: 20px 0;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #667eea;
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .loading-text {
+            text-align: center;
+            color: #666;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        .game-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .location-card {
+            position: relative;
+            aspect-ratio: 4/3;
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 3px solid transparent;
+        }
+
+        .location-card:hover:not(.answered) {
+            transform: scale(1.02);
+            border-color: #667eea;
+        }
+
+        .location-card.answered {
+            cursor: default;
+        }
+
+        .location-card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .location-info {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 15px;
+            transform: translateY(100%);
+            transition: transform 0.3s;
+        }
+
+        .location-card.show-info .location-info {
+            transform: translateY(0);
+        }
+
+        .location-name {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .location-distance {
+            font-size: 14px;
+            color: #ddd;
+        }
+
+        .result-icon {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 60px;
+            opacity: 0;
+            transform: scale(0);
+            transition: all 0.3s;
+        }
+
+        .location-card.show-result .result-icon {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .score {
+            text-align: center;
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .progress-text {
+            text-align: center;
+            color: #666;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .next-btn-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .results-screen {
+            text-align: center;
+        }
+
+        .final-score {
+            font-size: 72px;
+            color: #667eea;
+            font-weight: bold;
+            margin: 30px 0;
+        }
+
+        .results-message {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 30px;
+        }
+
+        .error {
+            color: red;
+            text-align: center;
+            padding: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .game-container {
+                grid-template-columns: 1fr;
+            }
+            h1 {
+                font-size: 24px;
+            }
+            .screen {
+                padding: 20px;
+            }
+        }
+
+        /* Pivot Game - Radio Options Styling */
+        .option {
+            display: block;
+            padding: 15px 20px;
+            margin: 10px 0;
+            background: #f8f8f8;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .option:hover:not(.answered) {
+            background: #e8e8f8;
+            border-color: #667eea;
+        }
+
+        .option input[type="radio"] {
+            margin-right: 12px;
+            cursor: pointer;
+        }
+
+        .option.selected {
+            background: #e8e8f8;
+            border-color: #667eea;
+        }
+
+        .option.correct {
+            background: #d4edda;
+            border-color: #28a745;
+        }
+
+        .option.incorrect {
+            background: #f8d7da;
+            border-color: #dc3545;
+        }
+
+        .option.answered {
+            cursor: default;
+        }
+
+        .option-text {
+            font-size: 16px;
+            color: #333;
+        }
+
+        .result-marker {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .result-marker.correct {
+            color: #28a745;
+        }
+
+        .result-marker.incorrect {
+            color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        <!-- Start Screen -->
+        <div id="startScreen" class="screen">
+            <h1>NearMe</h1>
+            <p class="subtitle">Test your local knowledge with 10 nearby images.</p>
+            <label for="addressInput" style="display:block; margin-bottom: 10px; color: #333; font-weight: bold;">
+                Enter your address:
+            </label>
+            <input id="addressInput" type="text" placeholder="Start typing your address...">
+            <button id="startBtn" onclick="startGame()" disabled>Let's go!</button>
+        </div>
+
+        <!-- Loading Screen -->
+        <div id="loadingScreen" class="screen" style="display:none;">
+            <h2 style="text-align:center; margin-bottom: 20px;">Generating Your Quiz...</h2>
+            <div class="loading-progress">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="loading-text" id="loadingText">Initialising...</div>
+            </div>
+            <p style="text-align: center; color: #666; margin-top: 30px;" id="selectedAddress"></p>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="gameScreen" class="screen" style="display:none;">
+            <div class="progress-text" id="progressText">Question 1 of 10</div>
+            <div class="score" id="scoreText">Score: 0/0</div>
+            <div style="text-align: center; margin: 20px 0;">
+                <img id="questionImage" src="" alt="Street View"
+                     style="max-width: 600px; width: 100%; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+            </div>
+            <h3 style="text-align: center; margin: 20px 0; color: #333;">Where are you?!</h3>
+            <div id="optionsContainer" style="max-width: 500px; margin: 0 auto;"></div>
+            <div class="next-btn-container">
+                <button id="nextBtn" onclick="nextQuestion()" disabled>Next Question &rarr;</button>
+            </div>
+        </div>
+
+        <!-- Results Screen -->
+        <div id="resultsScreen" class="screen" style="display:none;">
+            <div class="results-screen">
+                <h1>&#127881; Game Complete!</h1>
+                <div class="final-score" id="finalScore">0/10</div>
+                <div class="results-message" id="resultsMessage"></div>
+                <button onclick="location.reload()">Play Again</button>
+            </div>
+        </div>
+
+        <!-- Error Screen -->
+        <div id="errorScreen" class="screen" style="display:none;">
+            <div class="error">
+                <h2>&#9888;&#65039; Error</h2>
+                <p id="errorMessage"></p>
+                <button onclick="location.reload()" style="margin-top: 20px;">Try Again</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // ============================================================
+        // NearMe v0.2.0
+        // Phase 2: Airtable → Supabase migration
+        //
+        // WHAT CHANGED FROM v0.1.2:
+        //   - Airtable fetch/save replaced with Supabase JS client
+        //   - Record structure: record.fields.x → record.x (flat objects)
+        //   - CONFIG.airtable* removed; SUPABASE_CONFIG added
+        //   - Google key remains client-side (Phase 3 will proxy it)
+        // ============================================================
+
+        // ------------------------------------------------------------
+        // SUPABASE CONFIG
+        // URL and anon key are safe to expose in client-side code.
+        // The anon key + RLS policies control what users can do.
+        // Phase 3: Google API key moves to a server-side Edge Function.
+        // ------------------------------------------------------------
+        const SUPABASE_URL  = 'https://xetizepmyboygaahexno.supabase.co';
+        const SUPABASE_ANON = 'sb_publishable_d1A60sv8KBHWVwPK5Z6Rkw_MllM9VYR';
+
+        // Initialise Supabase client (loaded from CDN above)
+        const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+        // ------------------------------------------------------------
+        // GAME CONFIG
+        // Google API key: replace GOOGLE_API_KEY_HERE in the <script>
+        // src tag above for local dev. Phase 3 will inject via Vercel.
+        // ------------------------------------------------------------
+        const CONFIG = {
+            googleApiKey:          'GOOGLE_API_KEY_HERE', // used for Street View / Vision / Geocoding calls
+            radius:                500,
+            pointsToGenerate:      30,
+            questionsPerAddress:   10,
+            minCachedLocations:    20
+        };
+
+        // ------------------------------------------------------------
+        // VISION API CONFIG (unchanged from v0.1.2)
+        // ------------------------------------------------------------
+        const VISION_CONFIG = {
+            enabled: true,
+            minScoreToAccept:       3,
+            tier2RequiredForScore7: 3,
+            tier2RequiredForScore5: 2,
+            tier1Features: [
+                'lamp post', 'street light', 'light fixture',
+                'post box', 'mailbox', 'letter box',
+                'house number', 'building number',
+                'street sign', 'traffic sign', 'road sign',
+                'roundabout', 'traffic circle',
+                'bus stop', 'bus shelter',
+                'fire hydrant',
+                'bollard', 'traffic bollard',
+                'telephone box', 'phone box'
+            ],
+            tier2Features: [
+                'utility pole', 'telegraph pole', 'power line',
+                'fence', 'gate', 'railing',
+                'wall', 'brick wall', 'stone wall', 'flint wall',
+                'sidewalk', 'pavement', 'footpath',
+                'curb', 'kerb',
+                'road surface', 'asphalt',
+                'driveway', 'parking',
+                'pedestrian crossing', 'zebra crossing',
+                'brick', 'brickwork',
+                'stone', 'stonework',
+                'flint',
+                'chimney',
+                'roof', 'roofing',
+                'window', 'door',
+                'garage', 'garage door',
+                'bench', 'park bench',
+                'street furniture',
+                'bin', 'litter bin'
+            ]
+        };
+
+        // Game state
+        let questions       = [];
+        let currentQuestion = 0;
+        let score           = 0;
+        let answered        = false;
+        let selectedPlace   = null;
+
+        // ------------------------------------------------------------
+        // GOOGLE PLACES AUTOCOMPLETE
+        // ------------------------------------------------------------
+        let autocomplete;
+        window.addEventListener('load', function () {
+            const input = document.getElementById('addressInput');
+            autocomplete = new google.maps.places.Autocomplete(input);
+
+            autocomplete.addListener('place_changed', function () {
+                selectedPlace = autocomplete.getPlace();
+                const startBtn = document.getElementById('startBtn');
+
+                if (selectedPlace && selectedPlace.geometry) {
+                    startBtn.disabled = false;
+                    console.log('Address selected:', selectedPlace.formatted_address);
+                } else {
+                    startBtn.disabled = true;
+                    alert('Please select a valid address from the suggestions');
+                }
+            });
+        });
+
+        // ------------------------------------------------------------
+        // UTILITY FUNCTIONS
+        // ------------------------------------------------------------
+
+        /** Cache key: lat/lng rounded to 4dp + radius e.g. "50.8547_-0.4010_500" */
+        function getCoordinateHash(lat, lng, radius) {
+            return `${lat.toFixed(4)}_${lng.toFixed(4)}_${radius}`;
+        }
+
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
+            document.getElementById(screenId).style.display = 'block';
+        }
+
+        function showError(message) {
+            document.getElementById('errorMessage').textContent = message;
+            showScreen('errorScreen');
+        }
+
+        function updateProgress(percent, text) {
+            document.getElementById('progressFill').style.width = percent + '%';
+            document.getElementById('loadingText').textContent = text;
+        }
+
+        // ------------------------------------------------------------
+        // GEO UTILITIES (unchanged from v0.1.2)
+        // ------------------------------------------------------------
+
+        function generateRandomPointNearby(centerLat, centerLng, minDistance, maxDistance) {
+            const angle    = Math.random() * 2 * Math.PI;
+            const distance = minDistance + Math.random() * (maxDistance - minDistance);
+            const R        = 6371000;
+            const lat1     = centerLat * Math.PI / 180;
+            const lng1     = centerLng * Math.PI / 180;
+            const lat2     = Math.asin(
+                Math.sin(lat1) * Math.cos(distance / R) +
+                Math.cos(lat1) * Math.sin(distance / R) * Math.cos(angle)
+            );
+            const lng2 = lng1 + Math.atan2(
+                Math.sin(angle) * Math.sin(distance / R) * Math.cos(lat1),
+                Math.cos(distance / R) - Math.sin(lat1) * Math.sin(lat2)
+            );
+            return {
+                lat:      lat2 * 180 / Math.PI,
+                lng:      lng2 * 180 / Math.PI,
+                distance: Math.round(distance)
+            };
+        }
+
+        function haversineDistance(lat1, lon1, lat2, lon2) {
+            const R     = 6371000;
+            const toRad = (deg) => deg * Math.PI / 180;
+            const dLat  = toRad(lat2 - lat1);
+            const dLon  = toRad(lon2 - lon1);
+            const a =
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        }
+
+        // ------------------------------------------------------------
+        // GOOGLE API CALLS (unchanged from v0.1.2)
+        // Phase 3: these move to a Vercel Edge Function proxy
+        // ------------------------------------------------------------
+
+        async function checkStreetViewCoverage(lat, lng) {
+            const url = `https://maps.googleapis.com/maps/api/streetview/metadata?location=${lat},${lng}&key=${CONFIG.googleApiKey}`;
+            const response = await fetch(url);
+            return await response.json();
+        }
+
+        async function getStreetName(lat, lng) {
+            const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${CONFIG.googleApiKey}`;
+            const response = await fetch(url);
+            const data     = await response.json();
+
+            if (data.status === 'OK' && data.results.length > 0) {
+                const components = data.results[0].address_components;
+
+                const route = components.find(c => c.types.includes('route'));
+                if (route && isValidLocationName(route.long_name)) return route.long_name;
+
+                const neighborhood = components.find(c => c.types.includes('neighborhood'));
+                if (neighborhood && isValidLocationName(neighborhood.long_name)) return neighborhood.long_name;
+
+                const formatted  = data.results[0].formatted_address;
+                const firstPart  = formatted.split(',')[0];
+                if (
+                    isValidLocationName(firstPart) &&
+                    /\b(Road|Street|Avenue|Lane|Drive|Close|Way|Court|Place|Crescent|Gardens|Rise|Grove|Terrace|Hill|Walk)\b/i.test(firstPart)
+                ) return firstPart;
+            }
+            return null;
+        }
+
+        function getStreetViewUrl(lat, lng) {
+            return `https://maps.googleapis.com/maps/api/streetview?size=400x300&location=${lat},${lng}&fov=120&source=outdoor&key=${CONFIG.googleApiKey}`;
+        }
+
+        function isValidLocationName(name) {
+            if (!name || name === 'Street View') return false;
+            const t = name.trim();
+            if (/^\d+$/.test(t))       return false; // pure numbers
+            if (/^\d/.test(t))          return false; // starts with number
+            if (/\b[A-Z]\d+\b/.test(t)) return false; // highway codes
+            if (t.length < 3)           return false;
+            if (t.replace(/\s/g, '').length < 3) return false;
+            if (!/[a-zA-Z]/.test(t))    return false;
+            return true;
+        }
+
+        async function analyzeImageQuality(imageUrl) {
+            if (!VISION_CONFIG.enabled) return { accept: true, score: 5, reason: 'Filtering disabled' };
+
+            try {
+                // Fetch image and convert to base64 (Vision API requires base64, not a URL)
+                const imageBlob = await (await fetch(imageUrl)).blob();
+                const base64    = await new Promise((resolve, reject) => {
+                    const reader      = new FileReader();
+                    reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                    reader.onerror   = reject;
+                    reader.readAsDataURL(imageBlob);
+                });
+
+                const visionUrl = `https://vision.googleapis.com/v1/images:annotate?key=${CONFIG.googleApiKey}`;
+                const response  = await fetch(visionUrl, {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({
+                        requests: [{ image: { content: base64 }, features: [{ type: 'LABEL_DETECTION', maxResults: 20 }] }]
+                    })
+                });
+                const data = await response.json();
+
+                if (!data.responses || !data.responses[0].labelAnnotations) {
+                    return { accept: false, score: 0, reason: 'No labels detected', labels: [] };
+                }
+
+                const labels = data.responses[0].labelAnnotations.map(l => l.description.toLowerCase());
+
+                const tier1Matches = VISION_CONFIG.tier1Features.filter(f =>
+                    labels.some(l => l.includes(f) || f.includes(l))
+                );
+                if (tier1Matches.length > 0) {
+                    return { accept: true, score: 10, reason: `Distinctive: ${tier1Matches[0]}`, labels: labels.join(',') };
+                }
+
+                const tier2Matches = VISION_CONFIG.tier2Features.filter(f =>
+                    labels.some(l => l.includes(f) || f.includes(l))
+                );
+                let score  = 0;
+                let reason = '';
+                if      (tier2Matches.length >= VISION_CONFIG.tier2RequiredForScore7) { score = 7; reason = `${tier2Matches.length} street features`; }
+                else if (tier2Matches.length >= VISION_CONFIG.tier2RequiredForScore5) { score = 5; reason = `${tier2Matches.length} features (borderline)`; }
+                else if (tier2Matches.length >= 1)                                    { score = 3; reason = `${tier2Matches.length} feature (minimal)`; }
+                else                                                                   { score = 0; reason = 'No recognisable features'; }
+
+                return { accept: score >= VISION_CONFIG.minScoreToAccept, score, reason, labels: labels.join(','), tier2Count: tier2Matches.length };
+
+            } catch (error) {
+                console.error('Vision API error:', error);
+                return { accept: true, score: 5, reason: 'Vision error - accepted', labels: '' }; // fail open
+            }
+        }
+
+        // ------------------------------------------------------------
+        // SUPABASE DATA LAYER
+        // Replaces fetchFromAirtable() and saveToAirtable() from v0.1.2.
+        // Records are now flat objects (no record.fields wrapper).
+        // ------------------------------------------------------------
+
+        /**
+         * Fetch cached locations for a given coordinate hash.
+         * Returns an array of flat row objects from Supabase.
+         */
+        async function fetchFromSupabase(hash) {
+            const { data, error } = await db
+                .from('location_library')
+                .select('*')
+                .eq('coordinate_hash', hash);
+
+            if (error) {
+                console.error('Supabase fetch error:', error);
+                return [];
+            }
+            return data || [];
+        }
+
+        /**
+         * Insert new location rows into Supabase.
+         * Batches aren't needed (Supabase handles bulk inserts natively).
+         * Returns the inserted rows (with their new UUIDs).
+         */
+        async function saveToSupabase(locations) {
+            const { data, error } = await db
+                .from('location_library')
+                .insert(locations)
+                .select();
+
+            if (error) {
+                console.error('Supabase insert error:', error);
+                throw new Error(`Database error: ${error.message}`);
+            }
+            return data || [];
+        }
+
+        // ------------------------------------------------------------
+        // CORE GAME LOGIC: Get or generate locations for a coordinate
+        // ------------------------------------------------------------
+
+        async function getPointsForCoordinate(lat, lng) {
+            const hash = getCoordinateHash(lat, lng, CONFIG.radius);
+
+            updateProgress(10, 'Checking for cached locations...');
+
+            // --- CACHE HIT: reuse existing Supabase rows ---
+            const cached = await fetchFromSupabase(hash);
+            if (cached.length >= CONFIG.minCachedLocations) {
+                updateProgress(30, `Found ${cached.length} cached locations!`);
+                console.log('Cache HIT:', hash, cached.length, 'rows');
+                return cached;
+            }
+
+            // --- CACHE MISS: generate new locations via Google APIs ---
+            console.log('Cache MISS:', hash, '— generating new points...');
+            updateProgress(15, 'Generating points in distance bands...');
+
+            // Concentric bands give better geographic spread (v0.0.9+)
+            const bands = [
+                { minDist: 50,  maxDist: 150, count: 20 },
+                { minDist: 150, maxDist: 250, count: 20 },
+                { minDist: 250, maxDist: 350, count: 30 },
+                { minDist: 350, maxDist: 450, count: 30 }
+            ];
+
+            const randomPoints = [];
+            for (const band of bands) {
+                for (let i = 0; i < band.count; i++) {
+                    randomPoints.push(generateRandomPointNearby(lat, lng, band.minDist, band.maxDist));
+                }
+            }
+
+            updateProgress(20, `Checking ${randomPoints.length} points...`);
+
+            const validLocations = [];
+            let rejectedByVision = 0;
+
+            for (let i = 0; i < randomPoints.length; i++) {
+                const point = randomPoints[i];
+
+                // 1. Check Street View coverage
+                const metadata = await checkStreetViewCoverage(point.lat, point.lng);
+                if (metadata.status !== 'OK') {
+                    updateProgress(20 + (i / randomPoints.length) * 30, `Checked ${i + 1}/${randomPoints.length} (no coverage)`);
+                    continue;
+                }
+
+                // 2. Reverse-geocode to get a usable street name
+                const streetName = await getStreetName(point.lat, point.lng);
+                if (!streetName) {
+                    console.log(`Skipped: no valid name at ${point.lat}, ${point.lng}`);
+                    continue;
+                }
+
+                // 3. Analyse image quality with Cloud Vision
+                const imageUrl    = getStreetViewUrl(point.lat, point.lng);
+                updateProgress(20 + (i / randomPoints.length) * 30, `Analysing image quality ${i + 1}/${randomPoints.length}...`);
+                const visionResult = await analyzeImageQuality(imageUrl);
+
+                if (!visionResult.accept) {
+                    rejectedByVision++;
+                    console.log(`Rejected: ${streetName} (score ${visionResult.score}) — ${visionResult.reason}`);
+                    continue;
+                }
+
+                // 4. Accepted — queue for saving
+                validLocations.push({
+                    coordinate_hash:   hash,
+                    location_name:     streetName,
+                    latitude:          point.lat,
+                    longitude:         point.lng,
+                    image_url:         imageUrl,
+                    quality_score:     visionResult.score,
+                    vision_labels:     visionResult.labels,
+                    quality_flag:      'good',
+                    familiarity_score: 5,
+                    times_used:        0,
+                    types:             'random_street_view'
+                });
+
+                console.log(`✓ Accepted: ${streetName} (score ${visionResult.score}) — ${visionResult.reason}`);
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+
+            updateProgress(55, `Found ${validLocations.length} quality images (rejected ${rejectedByVision} poor views)`);
+
+            if (validLocations.length === 0) {
+                throw new Error('No quality images found. Try a different address.');
+            }
+            if (validLocations.length < 10) {
+                console.warn(`Only ${validLocations.length} locations — may struggle to generate 10 questions`);
+            }
+
+            console.log(`Saving ${validLocations.length} locations to Supabase...`);
+            updateProgress(70, `Saving ${validLocations.length} locations...`);
+
+            const saved = await saveToSupabase(validLocations);
+            updateProgress(80, 'Locations saved!');
+            return saved;
+        }
+
+        // ------------------------------------------------------------
+        // QUESTION GENERATION (logic unchanged; field access updated)
+        // Supabase rows are flat: record.latitude not record.fields.latitude
+        // ------------------------------------------------------------
+
+        function generateQuestions(locationRecords, userLat, userLng) {
+            updateProgress(85, 'Creating questions...');
+
+            // Map flat Supabase rows → enriched objects with calculated distance
+            const placesData = locationRecords
+                .filter(row => row.latitude && row.longitude)   // safety check
+                .map(row => ({
+                    recordId:  row.id,
+                    name:      row.location_name,
+                    image_url: row.image_url,
+                    latitude:  row.latitude,
+                    longitude: row.longitude,
+                    distance:  Math.round(haversineDistance(userLat, userLng, row.latitude, row.longitude))
+                }))
+                .filter(p => p.distance <= CONFIG.radius && p.distance > 0);
+
+            const questions     = [];
+            const usedLocations = new Set();
+
+            for (let attempt = 0; attempt < 100 && questions.length < CONFIG.questionsPerAddress; attempt++) {
+                const available = placesData.filter(p => !usedLocations.has(p.recordId));
+                if (available.length === 0) break;
+
+                const correct    = available[Math.floor(Math.random() * available.length)];
+                const minDist    = correct.distance * 0.5;
+                const maxDist    = correct.distance * 1.5;
+                const usedNames  = new Set([correct.name]);
+
+                // Potential decoys: in distance range, not already used
+                const potentialDecoys = placesData
+                    .filter(p => p.distance >= minDist && p.distance <= maxDist &&
+                                 p.recordId !== correct.recordId && !usedLocations.has(p.recordId))
+                    .sort(() => Math.random() - 0.5);
+
+                // Select up to 3 decoys with unique street names
+                const decoys = [];
+                for (const candidate of potentialDecoys) {
+                    if (!usedNames.has(candidate.name)) {
+                        decoys.push(candidate);
+                        usedNames.add(candidate.name);
+                    }
+                    if (decoys.length === 3) break;
+                }
+
+                if (decoys.length < 3) {
+                    console.log(`Skipped Q${questions.length + 1} — only ${decoys.length} unique decoys`);
+                    continue;
+                }
+
+                // Build shuffled options array
+                const options = [
+                    { name: correct.name, distance: correct.distance, isCorrect: true },
+                    ...decoys.map(d => ({ name: d.name, distance: d.distance, isCorrect: false }))
+                ];
+                for (let i = options.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [options[i], options[j]] = [options[j], options[i]];
+                }
+
+                questions.push({
+                    question_number:  questions.length + 1,
+                    image_url:        correct.image_url,
+                    correct_location: correct.name,
+                    options
+                });
+
+                // Mark all 4 locations as used for this session
+                usedLocations.add(correct.recordId);
+                decoys.forEach(d => usedLocations.add(d.recordId));
+            }
+
+            console.log(`Generated ${questions.length} questions`);
+            return questions;
+        }
+
+        // ------------------------------------------------------------
+        // GAME ORCHESTRATION
+        // ------------------------------------------------------------
+
+        async function startGame() {
+            if (!selectedPlace || !selectedPlace.geometry) {
+                alert('Please select an address first');
+                return;
+            }
+
+            const lat     = selectedPlace.geometry.location.lat();
+            const lng     = selectedPlace.geometry.location.lng();
+            const address = selectedPlace.formatted_address;
+
+            showScreen('loadingScreen');
+            document.getElementById('selectedAddress').textContent = `Playing from: ${address}`;
+
+            try {
+                const locationRecords = await getPointsForCoordinate(lat, lng);
+                questions = generateQuestions(locationRecords, lat, lng);
+                updateProgress(100, 'Ready!');
+
+                if (questions.length === 0) throw new Error('Could not generate enough questions');
+
+                currentQuestion = 0;
+                score           = 0;
+                await new Promise(resolve => setTimeout(resolve, 500));
+                showScreen('gameScreen');
+                displayQuestion();
+
+            } catch (error) {
+                console.error(error);
+                showError(error.message);
+            }
+        }
+
+        // ------------------------------------------------------------
+        // DISPLAY & INTERACTION (unchanged from v0.1.2)
+        // ------------------------------------------------------------
+
+        function displayQuestion() {
+            if (currentQuestion >= questions.length) { showResults(); return; }
+
+            answered = false;
+            const q  = questions[currentQuestion];
+
+            document.getElementById('progressText').textContent = `Question ${currentQuestion + 1} of ${questions.length}`;
+            document.getElementById('scoreText').textContent    = `Score: ${score}/${currentQuestion}`;
+            document.getElementById('questionImage').src        = q.image_url;
+
+            const optionsHtml = q.options.map((opt, idx) => `
+                <label class="option" id="option${idx}" onclick="selectOption(${idx})">
+                    <input type="radio" name="location" value="${idx}" disabled>
+                    <span class="option-text">${opt.name} (${opt.distance}m away)</span>
+                    <span class="result-marker" id="marker${idx}"></span>
+                </label>
+            `).join('');
+            document.getElementById('optionsContainer').innerHTML = optionsHtml;
+
+            setTimeout(() => {
+                document.querySelectorAll('input[name="location"]').forEach(r => r.disabled = false);
+            }, 100);
+
+            window.currentCorrectIndex = q.options.findIndex(o => o.isCorrect);
+            document.getElementById('nextBtn').disabled = true;
+        }
+
+        function selectOption(selectedIndex) {
+            if (answered) return;
+            answered = true;
+
+            const isCorrect = (selectedIndex === window.currentCorrectIndex);
+            if (isCorrect) score++;
+
+            questions[currentQuestion].options.forEach((opt, idx) => {
+                const optEl    = document.getElementById(`option${idx}`);
+                const markerEl = document.getElementById(`marker${idx}`);
+                optEl.classList.add('answered');
+
+                if (opt.isCorrect) {
+                    optEl.classList.add('correct');
+                    markerEl.textContent = '✓';
+                    markerEl.classList.add('correct');
+                } else if (idx === selectedIndex) {
+                    optEl.classList.add('incorrect');
+                    markerEl.textContent = '✗';
+                    markerEl.classList.add('incorrect');
+                }
+            });
+
+            document.getElementById('scoreText').textContent = `Score: ${score}/${currentQuestion + 1}`;
+
+            setTimeout(() => {
+                const nextBtn     = document.getElementById('nextBtn');
+                nextBtn.disabled  = false;
+                if (currentQuestion === questions.length - 1) nextBtn.textContent = 'Complete';
+            }, 1000);
+        }
+
+        function nextQuestion() {
+            currentQuestion++;
+            if (currentQuestion >= questions.length) {
+                showResults();
+            } else {
+                document.getElementById('nextBtn').textContent = 'Next Question \u2192';
+                displayQuestion();
+            }
+        }
+
+        function showResults() {
+            const percentage = Math.round((score / questions.length) * 100);
+            document.getElementById('finalScore').textContent = `${score}/${questions.length}`;
+
+            let message = '';
+            if      (percentage >= 90) message = '\uD83C\uDFC6 Amazing! You really know your local area!';
+            else if (percentage >= 70) message = '\uD83D\uDC4F Great job! You know your neighbourhood well!';
+            else if (percentage >= 50) message = '\uD83D\uDC4D Not bad! Time to explore more!';
+            else                       message = '\uD83D\uDDFA\uFE0F Maybe take a walk around your area!';
+
+            document.getElementById('resultsMessage').textContent = message;
+            showScreen('resultsScreen');
+        }
+    </script>
+</body>
+</html>

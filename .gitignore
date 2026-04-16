@@ -1,4 +1,4 @@
-# Environment variables — NEVER commit these
+# Environment variables - NEVER commit these
 .env
 .env.local
 .env.*.local
@@ -6,6 +6,9 @@
 # Node
 node_modules/
 .next/
+
+# Build output (generated at deploy time)
+dist/
 
 # OS
 .DS_Store

@@ -1,0 +1,8 @@
+{
+  "name": "nearme",
+  "version": "0.2.0",
+  "description": "Hyper-local geography quiz game",
+  "scripts": {
+    "build": "node build.js"
+  }
+}

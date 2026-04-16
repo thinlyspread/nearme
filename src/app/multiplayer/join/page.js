@@ -32,6 +32,8 @@ export default function JoinGame() {
 
   // Answer feedback
   const [answerResult, setAnswerResult] = useState(null); // { is_correct, points }
+  const [playerAnswered, setPlayerAnswered] = useState(false);
+  const [playerSelectedIdx, setPlayerSelectedIdx] = useState(-1);
 
   // Reveal state
   const [revealScores, setRevealScores] = useState([]);
@@ -114,9 +116,18 @@ export default function JoinGame() {
         if (q) setCorrectName(q.options[q.correct_index]?.name || '');
         setScreen('reveal');
       } else if (existing) {
-        // Question phase but already answered — wait
+        // Question phase but already answered — stay on question with answer highlighted
         setAnswerResult({ is_correct: existing.is_correct, points: existing.points_awarded, time_taken_ms: existing.time_taken_ms });
-        setScreen('answered');
+        setPlayerAnswered(true);
+        setPlayerSelectedIdx(existing.selected_option);
+        const q = room.questions[qi];
+        if (q) {
+          setQuestionIndex(qi);
+          setTotalQuestions(room.questions.length);
+          setOptions(q.options);
+          setImageUrl(q.image_url || '');
+        }
+        setScreen('question');
       } else {
         // Question phase, not answered — show question
         const q = room.questions[qi];
@@ -128,6 +139,8 @@ export default function JoinGame() {
           if (q.host_mode) setHostMode(q.host_mode);
           setStartedAt(room.question_started_at);
           setAnswerResult(null);
+          setPlayerAnswered(false);
+          setPlayerSelectedIdx(-1);
           setScreen('question');
         }
       }
@@ -201,6 +214,8 @@ export default function JoinGame() {
         if (payload.host_mode) setHostMode(payload.host_mode);
         setStartedAt(payload.started_at);
         setAnswerResult(null);
+        setPlayerAnswered(false);
+        setPlayerSelectedIdx(-1);
         setScreen('question');
       })
       .on('broadcast', { event: 'question:reveal' }, ({ payload }) => {
@@ -218,6 +233,8 @@ export default function JoinGame() {
       .on('broadcast', { event: 'game:restart' }, () => {
         clearInterval(timerRef.current);
         setAnswerResult(null);
+        setPlayerAnswered(false);
+        setPlayerSelectedIdx(-1);
         setLeaderboard([]);
         setRevealScores([]);
         setScreen('waiting');
@@ -249,6 +266,9 @@ export default function JoinGame() {
   }
 
   async function submitAnswer(selectedOption) {
+    if (playerAnswered) return;
+    setPlayerAnswered(true);
+    setPlayerSelectedIdx(selectedOption);
     clearInterval(timerRef.current);
     const code = joinCode.trim().toUpperCase();
 
@@ -265,7 +285,6 @@ export default function JoinGame() {
 
     if (res.ok) {
       setAnswerResult(data);
-      // Broadcast to host that we answered
       channelRef.current?.send({
         type: 'broadcast',
         event: 'player:answer',
@@ -273,10 +292,7 @@ export default function JoinGame() {
       });
     }
 
-    setScreen('answered');
-
-    // Immediately check if reveal already happened (host may have
-    // clicked Reveal while we were submitting)
+    // Stay on question screen — check if reveal already happened
     setTimeout(syncWithRoom, 500);
   }
 
@@ -362,39 +378,44 @@ export default function JoinGame() {
             <p style={{ textAlign: 'center', color: '#666', marginBottom: 10 }}>Look at the host's screen!</p>
           )}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, gridAutoRows: '1fr' }}>
-            {options.map((opt, idx) => (
-              <button
-                key={idx}
-                onClick={() => submitAnswer(idx)}
-                style={{
-                  padding: '20px 15px', fontSize: 16, borderRadius: 12,
-                  background: ['#667eea','#e74c3c','#2ecc71','#f39c12'][idx],
-                  border: 'none', color: 'white', fontWeight: 'bold',
-                  minHeight: 80, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  textAlign: 'center',
-                }}
-              >
-                <span>{opt.name}<br /><span style={{ fontSize: 12, opacity: 0.8 }}>{opt.distance}m</span></span>
-              </button>
-            ))}
+            {options.map((opt, idx) => {
+              const colors = ['#667eea','#e74c3c','#2ecc71','#f39c12'];
+              let opacity = 1;
+              if (playerAnswered) {
+                opacity = idx === playerSelectedIdx ? 1 : 0.4;
+              }
+              return (
+                <button
+                  key={idx}
+                  onClick={() => submitAnswer(idx)}
+                  disabled={playerAnswered}
+                  style={{
+                    padding: '20px 15px', fontSize: 16, borderRadius: 12,
+                    background: colors[idx],
+                    border: idx === playerSelectedIdx && playerAnswered ? '3px solid white' : 'none',
+                    color: 'white', fontWeight: 'bold',
+                    minHeight: 80, cursor: playerAnswered ? 'default' : 'pointer',
+                    opacity, transition: 'all 0.3s',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    textAlign: 'center',
+                    boxShadow: idx === playerSelectedIdx && playerAnswered ? '0 0 0 3px rgba(255,255,255,0.5)' : 'none',
+                  }}
+                >
+                  <span>
+                    {opt.name}<br /><span style={{ fontSize: 12, opacity: 0.8 }}>{opt.distance}m</span>
+                    {playerAnswered && idx === playerSelectedIdx && (
+                      <span style={{ display: 'block', marginTop: 4, fontSize: 13 }}>Locked In</span>
+                    )}
+                  </span>
+                </button>
+              );
+            })}
           </div>
-        </div>
-      )}
-
-      {/* Answered — waiting for reveal (no correct/wrong shown yet) */}
-      {screen === 'answered' && (
-        <div className="screen screen-narrow" style={{ textAlign: 'center' }}>
-          <h2>Answer Locked In!</h2>
-          <div style={{ margin: '30px 0' }}>
-            <div style={{ fontSize: 48 }}>{'\u23F3'}</div>
-            {answerResult && (
-              <div style={{ color: '#666', marginTop: 10 }}>
-                Answered in {(answerResult.time_taken_ms / 1000).toFixed(1)}s
-              </div>
-            )}
-          </div>
-          <p style={{ color: '#666' }}>Waiting for everyone...</p>
+          {playerAnswered && (
+            <p style={{ textAlign: 'center', color: '#666', marginTop: 12, fontSize: 14 }}>
+              Waiting for everyone...
+            </p>
+          )}
         </div>
       )}
 

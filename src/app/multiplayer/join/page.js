@@ -30,6 +30,7 @@ export default function JoinGame() {
   // Reveal state
   const [revealScores, setRevealScores] = useState([]);
   const [correctIndex, setCorrectIndex] = useState(-1);
+  const [correctName, setCorrectName]   = useState('');
 
   // Final leaderboard
   const [leaderboard, setLeaderboard] = useState([]);
@@ -173,6 +174,7 @@ export default function JoinGame() {
       .on('broadcast', { event: 'question:reveal' }, ({ payload }) => {
         clearInterval(timerRef.current);
         setCorrectIndex(payload.correct_index);
+        setCorrectName(payload.correct_name || '');
         setRevealScores(payload.scores);
         setScreen('reveal');
       })
@@ -352,8 +354,9 @@ export default function JoinGame() {
       {/* Reveal — now show correct/wrong */}
       {screen === 'reveal' && (
         <div className="screen" style={{ textAlign: 'center' }}>
+          {correctName && <h2>Answer: {correctName}</h2>}
           {imageUrl && hostMode === 'player' && (
-            <div style={{ textAlign: 'center', margin: '0 0 10px' }}>
+            <div style={{ textAlign: 'center', margin: '10px 0' }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={imageUrl} alt="Street View" style={{ maxWidth: '100%', borderRadius: 8 }} />
             </div>

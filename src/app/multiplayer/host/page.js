@@ -271,6 +271,7 @@ export default function HostGame() {
       payload: {
         index: currentQuestion,
         correct_index: correctIndex,
+        correct_name: q.options[correctIndex].name,
         scores: broadcastScores,
       },
     });

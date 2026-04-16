@@ -2,7 +2,7 @@ import './globals.css';
 import Script from 'next/script';
 
 export const metadata = {
-  title: 'NearMe v0.4.0',
+  title: 'NearMe v0.5.0',
   description: 'Test your local knowledge with 10 nearby images.',
 };
 

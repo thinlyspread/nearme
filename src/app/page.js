@@ -175,32 +175,55 @@ export default function NearMe() {
 
       {screen === 'game' && q && (
         <div className="screen">
-          <div className="progress-text">Question {currentQuestion + 1} of {questions.length}</div>
-          <div className="score">Score: {score}/{answered ? currentQuestion + 1 : currentQuestion}</div>
-          <div style={{ textAlign: 'center', margin: '20px 0' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <span className="progress-text">Question {currentQuestion + 1} of {questions.length}</span>
+            <span className="score" style={{ marginBottom: 0 }}>Score: {score}/{answered ? currentQuestion + 1 : currentQuestion}</span>
+          </div>
+          <div style={{ textAlign: 'center', margin: '10px 0' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={q.image_url} alt="Street View" style={{ maxWidth: 600, width: '100%', borderRadius: 8, boxShadow: '0 4px 8px rgba(0,0,0,0.2)' }} />
           </div>
-          <h3 style={{ textAlign: 'center', margin: '20px 0', color: '#333' }}>Where are you?!</h3>
-          <div style={{ maxWidth: 500, margin: '0 auto' }}>
+          <h3 style={{ textAlign: 'center', margin: '15px 0', color: '#333' }}>Where Is This?</h3>
+          <div style={{ maxWidth: 600, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, gridAutoRows: '1fr' }}>
             {q.options.map((opt, idx) => {
-              let cls = 'option';
+              const colors = ['#667eea','#e74c3c','#2ecc71','#f39c12'];
+              let bg = colors[idx];
+              let opacity = 1;
               if (answered) {
-                cls += ' answered';
-                if (opt.isCorrect) cls += ' correct';
-                else if (idx === selectedIdx) cls += ' incorrect';
+                if (opt.isCorrect) {
+                  bg = '#28a745';
+                  opacity = 1;
+                } else if (idx === selectedIdx) {
+                  bg = '#dc3545';
+                  opacity = 1;
+                } else {
+                  opacity = 0.4;
+                }
               }
               return (
-                <label key={idx} className={cls} onClick={() => selectOption(idx)}>
-                  <input type="radio" name="location" value={idx} checked={idx === selectedIdx} readOnly />
-                  <span className="option-text">{opt.name} ({opt.distance}m away)</span>
-                  {answered && opt.isCorrect && <span className="result-marker correct">{'\u2713'}</span>}
-                  {answered && !opt.isCorrect && idx === selectedIdx && <span className="result-marker incorrect">{'\u2717'}</span>}
-                </label>
+                <button
+                  key={idx}
+                  onClick={() => selectOption(idx)}
+                  disabled={answered}
+                  style={{
+                    padding: '20px 15px', background: bg, border: 'none',
+                    borderRadius: 12, textAlign: 'center', fontSize: 16,
+                    color: 'white', fontWeight: 'bold',
+                    minHeight: 80, cursor: answered ? 'default' : 'pointer',
+                    opacity, transition: 'all 0.3s',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  <span>
+                    {opt.name} ({opt.distance}m)
+                    {answered && opt.isCorrect && <span style={{ display: 'block', marginTop: 4, fontSize: 14 }}>{'\u2713'} Correct</span>}
+                    {answered && !opt.isCorrect && idx === selectedIdx && <span style={{ display: 'block', marginTop: 4, fontSize: 14 }}>{'\u2717'} Wrong</span>}
+                  </span>
+                </button>
               );
             })}
           </div>
-          <div className="next-btn-container">
+          <div style={{ textAlign: 'center', marginTop: 20 }}>
             <button disabled={!nextEnabled} onClick={nextQuestionHandler}>
               {currentQuestion === questions.length - 1 ? 'See Results' : 'Next Question \u2192'}
             </button>
@@ -209,17 +232,18 @@ export default function NearMe() {
       )}
 
       {screen === 'results' && (
-        <div className="screen screen-narrow">
-          <div className="results-screen">
-            <h1>{'\uD83C\uDF89'} Game Complete!</h1>
-            <div className="final-score">{score}/{questions.length}</div>
-            <div className="results-message">
-              {pct >= 90 ? '\uD83C\uDFC6 Amazing! You really know your local area!'
-                : pct >= 70 ? '\uD83D\uDC4F Great job! You know your neighbourhood well!'
-                : pct >= 50 ? '\uD83D\uDC4D Not bad! Time to explore more!'
-                : '\uD83D\uDDFA\uFE0F Maybe take a walk around your area!'}
-            </div>
-            <button onClick={() => window.location.reload()}>Play Again</button>
+        <div className="screen screen-narrow" style={{ textAlign: 'center' }}>
+          <h1>Game Complete!</h1>
+          <div className="final-score">{score}/{questions.length}</div>
+          <div className="results-message">
+            {pct >= 90 ? '\uD83C\uDFC6 Amazing! You really know your local area!'
+              : pct >= 70 ? '\uD83D\uDC4F Great job! You know your neighbourhood well!'
+              : pct >= 50 ? '\uD83D\uDC4D Not bad! Time to explore more!'
+              : '\uD83D\uDDFA\uFE0F Maybe take a walk around your area!'}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
+            <button onClick={() => window.location.reload()}>Play Again!</button>
+            <a href="/" style={{ display: 'inline-block', background: '#f0f0f0', color: '#333', padding: '12px 24px', fontSize: 14, border: 'none', borderRadius: 8, textDecoration: 'none' }}>Back to Menu</a>
           </div>
         </div>
       )}

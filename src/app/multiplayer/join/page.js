@@ -6,7 +6,12 @@ import { TIME_LIMIT_MS } from '@/lib/scoring';
 
 export default function JoinGame() {
   // Screen: enter-code | waiting | question | answered | reveal | finished
-  const [screen, setScreen]       = useState('enter-code');
+  const [screenRaw, setScreenRaw] = useState('enter-code');
+  function setScreen(s) {
+    setScreenRaw(s);
+    window.scrollTo(0, 0);
+  }
+  const screen = screenRaw;
   const [errorMsg, setErrorMsg]   = useState('');
   const [joinCode, setJoinCode]   = useState('');
   const [nickname, setNickname]   = useState('');

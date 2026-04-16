@@ -9,7 +9,9 @@ import { TIME_LIMIT_MS } from '@/lib/scoring';
 
 export default function HostGame() {
   // Screen: setup | lobby | loading | question | reveal | finished
-  const [screen, setScreen]         = useState('setup');
+  const [screenRaw, setScreenRaw]   = useState('setup');
+  function setScreen(s) { setScreenRaw(s); window.scrollTo(0, 0); }
+  const screen = screenRaw;
   const [errorMsg, setErrorMsg]     = useState('');
   const [nickname, setNickname]     = useState('');
   const [hostMode, setHostMode]     = useState('player'); // 'player' | 'observer'

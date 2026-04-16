@@ -95,6 +95,13 @@ export default function HostGame() {
     return () => clearInterval(timerRef.current);
   }, [screen, currentQuestion]);
 
+  // Auto-reveal when all players have answered
+  useEffect(() => {
+    if (screen === 'question' && answeredCount > 0 && answeredCount >= players.length) {
+      handleReveal();
+    }
+  }, [answeredCount, players.length, screen]);
+
   async function createRoom() {
     const place = selectedPlaceRef.current;
     if (!place?.geometry || !nickname.trim()) return;

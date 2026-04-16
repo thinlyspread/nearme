@@ -25,7 +25,9 @@ export default function NearMe() {
   const addressInputRef  = useRef(null);
 
   useEffect(() => {
+    if (screen !== 'start') return;
     if (typeof google === 'undefined') return;
+    if (!addressInputRef.current) return;
     const autocomplete = new google.maps.places.Autocomplete(addressInputRef.current);
     autocomplete.addListener('place_changed', () => {
       const place = autocomplete.getPlace();
@@ -34,7 +36,7 @@ export default function NearMe() {
       setStartBtnEnabled(valid);
       if (!valid) alert('Please select a valid address from the suggestions');
     });
-  }, []);
+  }, [screen]);
 
   function updateProgress(pct, text) {
     setProgress(pct);

@@ -274,6 +274,10 @@ export default function JoinGame() {
     }
 
     setScreen('answered');
+
+    // Immediately check if reveal already happened (host may have
+    // clicked Reveal while we were submitting)
+    setTimeout(syncWithRoom, 500);
   }
 
   const myRank = leaderboard.findIndex(p => p.player_id === playerId);

@@ -295,24 +295,28 @@ export default function JoinGame() {
           <h1>Join Game</h1>
           <p className="subtitle">Enter the code shown on the host&apos;s screen</p>
           {errorMsg && <p style={{ color: 'red', marginBottom: 10 }}>{errorMsg}</p>}
-          <input
-            type="text" maxLength={4} placeholder="ABCD"
-            value={joinCode}
-            onChange={e => setJoinCode(e.target.value.toUpperCase())}
-            style={{
-              width: '100%', maxWidth: 200, padding: 20, fontSize: 32, textAlign: 'center',
-              border: '2px solid #ddd', borderRadius: 8, letterSpacing: 8, marginBottom: 15,
-              textTransform: 'uppercase',
-            }}
-          />
-          <input
-            type="text" maxLength={12} placeholder="Your nickname"
-            value={nickname} onChange={e => setNickname(e.target.value)}
-            style={{
-              width: '100%', maxWidth: 300, padding: 15, fontSize: 16,
-              border: '2px solid #ddd', borderRadius: 8, marginBottom: 20,
-            }}
-          />
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+            <label style={{ fontSize: 14, color: '#666', fontWeight: 'bold' }}>Game code</label>
+            <input
+              type="text" maxLength={4} placeholder="ABCD"
+              value={joinCode}
+              onChange={e => setJoinCode(e.target.value.toUpperCase())}
+              style={{
+                width: '100%', maxWidth: 220, padding: 20, fontSize: 32, textAlign: 'center',
+                border: '2px solid #ddd', borderRadius: 8, letterSpacing: 8,
+                textTransform: 'uppercase',
+              }}
+            />
+            <label style={{ fontSize: 14, color: '#666', fontWeight: 'bold', marginTop: 4 }}>Your nickname</label>
+            <input
+              type="text" maxLength={12} placeholder="e.g. Mum"
+              value={nickname} onChange={e => setNickname(e.target.value)}
+              style={{
+                width: '100%', maxWidth: 220, padding: 15, fontSize: 16,
+                border: '2px solid #ddd', borderRadius: 8, textAlign: 'center',
+              }}
+            />
+          </div>
           <div><button onClick={handleJoin}>Join</button></div>
           <div style={{ marginTop: 15 }}><a href="/" style={{ color: '#667eea', fontSize: 14 }}>&larr; Back</a></div>
         </div>

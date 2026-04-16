@@ -82,6 +82,13 @@ export default function JoinGame() {
         setLeaderboard(payload.leaderboard);
         setScreen('finished');
       })
+      .on('broadcast', { event: 'game:restart' }, () => {
+        clearInterval(timerRef.current);
+        setAnswerResult(null);
+        setLeaderboard([]);
+        setRevealScores([]);
+        setScreen('waiting');
+      })
       .subscribe();
 
     channelRef.current = channel;
@@ -282,7 +289,7 @@ export default function JoinGame() {
               </div>
             ))}
           </div>
-          <button onClick={() => window.location.reload()}>Play Again</button>
+          <p style={{ color: '#666', marginTop: 10 }}>Waiting for host to start a new round...</p>
         </div>
       )}
     </div>

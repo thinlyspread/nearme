@@ -307,6 +307,45 @@ export default function HostGame() {
     setScreen('question');
   }
 
+  async function playAgain() {
+    // Reset all player scores
+    await db.from('game_players').update({ total_score: 0 }).eq('room_id', roomId);
+
+    // Delete old answers
+    await db.from('game_answers').delete().eq('room_id', roomId);
+
+    // Reset room to lobby
+    await db.from('game_rooms').update({
+      status: 'lobby',
+      questions: null,
+      current_question_index: -1,
+      question_started_at: null,
+    }).eq('id', roomId);
+
+    // Broadcast restart to all players
+    channelRef.current?.send({
+      type: 'broadcast',
+      event: 'game:restart',
+      payload: {},
+    });
+
+    // Reset local state
+    setQuestions([]);
+    setCurrentQuestion(0);
+    setAnsweredCount(0);
+    setRevealData(null);
+    setLeaderboard([]);
+    setHostAnswered(false);
+    setHostSelectedIdx(-1);
+    setHostAnswerResult(null);
+
+    // Refresh player list
+    const { data } = await db.from('game_players').select('*').eq('room_id', roomId).order('created_at');
+    setPlayers(data || []);
+
+    setScreen('lobby');
+  }
+
   // ── Render ─────────────────────────────────────────────
 
   const q = questions[currentQuestion];
@@ -473,7 +512,7 @@ export default function HostGame() {
               </div>
             ))}
           </div>
-          <button onClick={() => window.location.reload()}>Play Again</button>
+          <button onClick={playAgain}>Play Again</button>
           <div style={{ marginTop: 10 }}>
             <a href="/" style={{ color: '#667eea', fontSize: 14 }}>Solo mode</a>
           </div>

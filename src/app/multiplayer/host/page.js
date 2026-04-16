@@ -406,7 +406,7 @@ export default function HostGame() {
           <label style={{ display: 'block', marginBottom: 10, color: '#333', fontWeight: 'bold' }}>Enter your address:</label>
           <input ref={addressInputRef} id="addressInput" type="text" placeholder="Start typing your address..." />
           <button disabled={!startBtnEnabled} onClick={createRoom}>Create Room</button>
-          <div style={{ marginTop: 15 }}><a href="/multiplayer" style={{ color: '#667eea', fontSize: 14 }}>&larr; Back</a></div>
+          <div style={{ marginTop: 15 }}><a href="/" style={{ color: '#667eea', fontSize: 14 }}>&larr; Back</a></div>
         </div>
       )}
 

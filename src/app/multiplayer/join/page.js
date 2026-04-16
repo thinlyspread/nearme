@@ -301,7 +301,7 @@ export default function JoinGame() {
             }}
           />
           <div><button onClick={handleJoin}>Join</button></div>
-          <div style={{ marginTop: 15 }}><a href="/multiplayer" style={{ color: '#667eea', fontSize: 14 }}>&larr; Back</a></div>
+          <div style={{ marginTop: 15 }}><a href="/" style={{ color: '#667eea', fontSize: 14 }}>&larr; Back</a></div>
         </div>
       )}
 

@@ -27,6 +27,5 @@ export function haversineDistance(lat1, lon1, lat2, lon2) {
 }
 
 export function getCoordinateHash(lat, lng, radius) {
-  // 3 decimals ≈ 100m grid — neighbours within the same cell share cached results.
-  return `${lat.toFixed(3)}_${lng.toFixed(3)}_${radius}`;
+  return `${lat.toFixed(4)}_${lng.toFixed(4)}_${radius}`;
 }

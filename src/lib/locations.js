@@ -1,8 +1,28 @@
 import { CONFIG } from './config';
-import { getCoordinateHash } from './geo';
+import { generateRandomPointNearby, getCoordinateHash } from './geo';
 import { checkStreetViewCoverage, getStreetName, analyzeImageQuality } from './api';
 import { fetchFromSupabase, saveToSupabase } from './supabase';
 import { fetchRoadPoints } from './osm';
+
+// Minimum OSM points to count as a usable road-biased pool. If Overpass
+// returns fewer than this (e.g. the mirrors are down, or the area is
+// genuinely road-sparse) we fall back to random 2D sampling so the game
+// still works — OSM is a bonus, not a hard dependency.
+const MIN_OSM_POINTS = 50;
+
+function randomSamplePoints(lat, lng) {
+  const bands = [
+    { minDist:  50, maxDist: 150, count: 20 },
+    { minDist: 150, maxDist: 250, count: 20 },
+    { minDist: 250, maxDist: 350, count: 30 },
+    { minDist: 350, maxDist: 450, count: 30 },
+  ];
+  return bands.flatMap(b =>
+    Array.from({ length: b.count }, () =>
+      generateRandomPointNearby(lat, lng, b.minDist, b.maxDist)
+    )
+  );
+}
 
 async function processPoint(point, hash) {
   try {
@@ -61,13 +81,16 @@ export async function getPointsForCoordinate(lat, lng, onProgress = () => {}) {
   console.log('Cache MISS:', hash);
   onProgress(12, 'Finding roads nearby...');
 
-  const samplePoints = await fetchRoadPoints(lat, lng, CONFIG.radius, { maxPoints: 100, maxPerRoad: 8 });
+  const osmPoints = await fetchRoadPoints(lat, lng, CONFIG.radius, { maxPoints: 100, maxPerRoad: 8 });
 
-  if (!samplePoints.length) {
-    throw new Error('No roads found near this address. Try a different address.');
+  let samplePoints;
+  if (osmPoints.length >= MIN_OSM_POINTS) {
+    samplePoints = osmPoints;
+    console.log(`OSM returned ${osmPoints.length} road-biased points`);
+  } else {
+    samplePoints = randomSamplePoints(lat, lng);
+    console.log(`OSM returned only ${osmPoints.length} points (below ${MIN_OSM_POINTS} threshold) — falling back to ${samplePoints.length} random points`);
   }
-
-  console.log(`OSM returned ${samplePoints.length} road-biased points`);
 
   const totalBatches   = Math.ceil(samplePoints.length / CONFIG.batchSize);
   const validLocations = [];

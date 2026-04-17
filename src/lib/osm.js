@@ -3,7 +3,13 @@
 // points, which is especially important for rural areas where most random
 // points land in fields.
 
-const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
+// Multiple Overpass mirrors — the main server is frequently overloaded. We
+// rotate through these on retry. Each one accepts the same query format.
+const OVERPASS_MIRRORS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
+];
 
 // Highway types that are game-appropriate. We exclude motorways, trunks,
 // footways, cycleways, paths, and pedestrian-only areas — Street View either
@@ -34,31 +40,44 @@ export async function fetchRoadPoints(lat, lng, radiusMeters, opts = {}) {
   const filter = PLAYABLE_HIGHWAYS.join('|');
   const query = `[out:json][timeout:25];way(around:${radiusMeters},${lat},${lng})[highway~"^(${filter})$"];out geom;`;
 
-  try {
-    const res = await fetch(OVERPASS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: query,
-    });
-    if (!res.ok) {
-      console.warn('Overpass returned', res.status);
-      return [];
-    }
-    const data = await res.json();
+  const data = await queryOverpassWithRetries(query);
+  if (!data) return [];
 
-    const points = [];
-    for (const way of data.elements || []) {
-      if (!way.geometry?.length) continue;
-      const nodes = way.geometry.map(g => ({ lat: g.lat, lng: g.lon }));
-      shuffle(nodes);
-      points.push(...nodes.slice(0, maxPerRoad));
-    }
-    shuffle(points);
-    return points.slice(0, maxPoints);
-  } catch (err) {
-    console.warn('Overpass query failed:', err.message);
-    return [];
+  const points = [];
+  for (const way of data.elements || []) {
+    if (!way.geometry?.length) continue;
+    const nodes = way.geometry.map(g => ({ lat: g.lat, lng: g.lon }));
+    shuffle(nodes);
+    points.push(...nodes.slice(0, maxPerRoad));
   }
+  shuffle(points);
+  return points.slice(0, maxPoints);
+}
+
+async function queryOverpassWithRetries(query) {
+  for (let i = 0; i < OVERPASS_MIRRORS.length; i++) {
+    const mirror = OVERPASS_MIRRORS[i];
+    try {
+      const res = await fetch(mirror, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: query,
+      });
+      // Overpass sometimes returns HTTP 200 with an HTML error body when the
+      // server is overloaded. Parsing as JSON will throw for those — caught
+      // below and treated the same as a network failure.
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const text = await res.text();
+      if (!text.startsWith('{')) throw new Error('Non-JSON response (server busy)');
+      return JSON.parse(text);
+    } catch (err) {
+      console.warn(`Overpass mirror ${i + 1}/${OVERPASS_MIRRORS.length} failed:`, err.message);
+      if (i < OVERPASS_MIRRORS.length - 1) {
+        await new Promise(r => setTimeout(r, 500));
+      }
+    }
+  }
+  return null;
 }
 
 // Fisher-Yates

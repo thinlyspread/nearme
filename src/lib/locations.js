@@ -4,24 +4,29 @@ import { checkStreetViewCoverage, getStreetName, analyzeImageQuality } from './a
 import { fetchFromSupabase, saveToSupabase } from './supabase';
 import { fetchRoadPoints } from './osm';
 
-// Minimum OSM points to count as a usable road-biased pool. If Overpass
-// returns fewer than this (e.g. the mirrors are down, or the area is
-// genuinely road-sparse) we fall back to random 2D sampling so the game
-// still works — OSM is a bonus, not a hard dependency.
-const MIN_OSM_POINTS = 50;
+// Total candidate samples we aim for each search. OSM contributes whatever
+// it can (0 for rural or when Overpass is down, 60-ish for dense urban),
+// and we top up the rest with random 2D points so the candidate count is
+// always the same — urban doesn't lose its historical sample count, rural
+// gets road bias on top.
+const TOTAL_SAMPLE_POINTS = 100;
 
-function randomSamplePoints(lat, lng) {
+function randomSamplePoints(lat, lng, count) {
+  // Four equal-sized bands from 50m to 450m, roughly matching the old
+  // generator's distribution but scaled to the requested count.
+  const perBand = Math.ceil(count / 4);
   const bands = [
-    { minDist:  50, maxDist: 150, count: 20 },
-    { minDist: 150, maxDist: 250, count: 20 },
-    { minDist: 250, maxDist: 350, count: 30 },
-    { minDist: 350, maxDist: 450, count: 30 },
+    { minDist:  50, maxDist: 150 },
+    { minDist: 150, maxDist: 250 },
+    { minDist: 250, maxDist: 350 },
+    { minDist: 350, maxDist: 450 },
   ];
-  return bands.flatMap(b =>
-    Array.from({ length: b.count }, () =>
+  const points = bands.flatMap(b =>
+    Array.from({ length: perBand }, () =>
       generateRandomPointNearby(lat, lng, b.minDist, b.maxDist)
     )
   );
+  return points.slice(0, count);
 }
 
 async function processPoint(point, hash) {
@@ -81,16 +86,12 @@ export async function getPointsForCoordinate(lat, lng, onProgress = () => {}) {
   console.log('Cache MISS:', hash);
   onProgress(12, 'Finding roads nearby...');
 
-  const osmPoints = await fetchRoadPoints(lat, lng, CONFIG.radius, { maxPoints: 100, maxPerRoad: 8 });
+  const osmPoints = await fetchRoadPoints(lat, lng, CONFIG.radius, { maxPoints: TOTAL_SAMPLE_POINTS, maxPerRoad: 8 });
+  const needed = Math.max(0, TOTAL_SAMPLE_POINTS - osmPoints.length);
+  const randomPoints = needed > 0 ? randomSamplePoints(lat, lng, needed) : [];
 
-  let samplePoints;
-  if (osmPoints.length >= MIN_OSM_POINTS) {
-    samplePoints = osmPoints;
-    console.log(`OSM returned ${osmPoints.length} road-biased points`);
-  } else {
-    samplePoints = randomSamplePoints(lat, lng);
-    console.log(`OSM returned only ${osmPoints.length} points (below ${MIN_OSM_POINTS} threshold) — falling back to ${samplePoints.length} random points`);
-  }
+  const samplePoints = [...osmPoints, ...randomPoints];
+  console.log(`Samples: ${osmPoints.length} from OSM + ${randomPoints.length} random = ${samplePoints.length} total`);
 
   const totalBatches   = Math.ceil(samplePoints.length / CONFIG.batchSize);
   const validLocations = [];

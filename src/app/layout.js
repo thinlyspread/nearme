@@ -15,7 +15,13 @@ export default function RootLayout({ children }) {
           strategy="beforeInteractive"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <a className="brand-link" href="https://pegsy.uk" aria-label="Back to Pegsy Games">
+          <img src="/pegsy.webp" alt="" />
+          <span>Pegsy Games</span>
+        </a>
+        {children}
+      </body>
     </html>
   );
 }

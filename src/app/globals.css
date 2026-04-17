@@ -111,11 +111,44 @@ button:disabled { background: #ccc; cursor: not-allowed; transform: none; }
 .result-marker.correct   { color: #28a745; }
 .result-marker.incorrect { color: #dc3545; }
 
+.brand-link {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 6px 6px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #333;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 14px;
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  z-index: 1000;
+}
+.brand-link:hover,
+.brand-link:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+  outline: none;
+}
+.brand-link img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  display: block;
+}
+
 @media (max-width: 768px) {
-  body { align-items: flex-start; }
+  body { align-items: flex-start; padding-top: 56px; }
   h1 { font-size: 24px; }
   .container { padding: 10px; }
   .screen { padding: 16px; border-radius: 8px; }
+  .brand-link { top: 10px; left: 10px; font-size: 13px; padding: 5px 10px 5px 5px; }
+  .brand-link img { width: 20px; height: 20px; }
 }
 
 @keyframes countdown-pop {

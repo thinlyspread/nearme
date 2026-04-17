@@ -39,24 +39,14 @@ async function processPoint(point, hash) {
   }
 }
 
-function bandsForRadius(radiusMeters) {
-  return [
-    { minDist: 0.10 * radiusMeters, maxDist: 0.30 * radiusMeters, count: 20 },
-    { minDist: 0.30 * radiusMeters, maxDist: 0.50 * radiusMeters, count: 20 },
-    { minDist: 0.50 * radiusMeters, maxDist: 0.70 * radiusMeters, count: 30 },
-    { minDist: 0.70 * radiusMeters, maxDist: 0.90 * radiusMeters, count: 30 },
-  ];
-}
-
 /**
  * Fetch cached locations or generate new ones.
  * @param {number} lat
  * @param {number} lng
  * @param {function} onProgress - callback(percent, text) for UI updates
- * @param {number} [radiusMeters] - search radius in metres; defaults to CONFIG.radius
  */
-export async function getPointsForCoordinate(lat, lng, onProgress = () => {}, radiusMeters = CONFIG.radius) {
-  const hash = getCoordinateHash(lat, lng, radiusMeters);
+export async function getPointsForCoordinate(lat, lng, onProgress = () => {}) {
+  const hash = getCoordinateHash(lat, lng, CONFIG.radius);
 
   onProgress(10, 'Checking for cached locations...');
 
@@ -67,10 +57,15 @@ export async function getPointsForCoordinate(lat, lng, onProgress = () => {}, ra
     return cached;
   }
 
-  console.log('Cache MISS:', hash, 'radius', radiusMeters);
-  onProgress(15, 'Finding places to explore...');
+  console.log('Cache MISS:', hash);
+  onProgress(15, 'Generating random points...');
 
-  const bands = bandsForRadius(radiusMeters);
+  const bands = [
+    { minDist:  50, maxDist: 150, count: 20 },
+    { minDist: 150, maxDist: 250, count: 20 },
+    { minDist: 250, maxDist: 350, count: 30 },
+    { minDist: 350, maxDist: 450, count: 30 },
+  ];
   const randomPoints = bands.flatMap(b =>
     Array.from({ length: b.count }, () =>
       generateRandomPointNearby(lat, lng, b.minDist, b.maxDist)
@@ -81,7 +76,7 @@ export async function getPointsForCoordinate(lat, lng, onProgress = () => {}, ra
   const validLocations = [];
   let processed        = 0;
 
-  onProgress(20, 'Checking what we can find...');
+  onProgress(20, `Checking ${randomPoints.length} points in ${totalBatches} batches...`);
 
   for (let i = 0; i < randomPoints.length; i += CONFIG.batchSize) {
     if (validLocations.length >= CONFIG.targetLocations) {
@@ -98,17 +93,17 @@ export async function getPointsForCoordinate(lat, lng, onProgress = () => {}, ra
 
     onProgress(
       20 + (processed / randomPoints.length) * 38,
-      `Checking ${batchNum}/${totalBatches} — ${validLocations.length} places so far`
+      `Batch ${batchNum}/${totalBatches} done — ${validLocations.length} locations found`
     );
   }
 
-  onProgress(62, `Found ${validLocations.length} places`);
+  onProgress(62, `Found ${validLocations.length} quality locations`);
 
   if (!validLocations.length) {
-    return [];
+    throw new Error('No usable Street View images found. Try a different address.');
   }
 
-  onProgress(72, 'Saving what we found...');
+  onProgress(72, `Saving ${validLocations.length} locations to database...`);
   const saved = await saveToSupabase(validLocations);
   onProgress(82, 'Saved!');
   return saved;

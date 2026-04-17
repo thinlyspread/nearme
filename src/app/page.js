@@ -12,8 +12,6 @@ export default function NearMe() {
   const [loadingText, setLoadingText] = useState('Initialising...');
   const [address, setAddress]         = useState('');
   const [startBtnEnabled, setStartBtnEnabled] = useState(false);
-  const [tierIndex, setTierIndex]     = useState(0);
-  const [latLng, setLatLng]           = useState(null);
 
   const [questions, setQuestions]             = useState([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -52,33 +50,14 @@ export default function NearMe() {
     const lat = place.geometry.location.lat();
     const lng = place.geometry.location.lng();
     setAddress(place.formatted_address);
-    setLatLng({ lat, lng });
-    await runTier(0, { lat, lng });
-  }
-
-  async function runTier(index, coords = latLng) {
-    if (!coords) return;
-    const radius = CONFIG.searchTiers[index];
-    setTierIndex(index);
     setScreen('loading');
-    setProgress(0);
-    setLoadingText(index === 0 ? 'Initialising...' : 'Searching a bit further out...');
 
     try {
-      const records = await getPointsForCoordinate(coords.lat, coords.lng, updateProgress, radius);
+      const records = await getPointsForCoordinate(lat, lng, updateProgress);
 
       updateProgress(86, 'Building questions...');
-      const qs = generateQuestions(records, coords.lat, coords.lng, radius);
-
-      if (qs.length < CONFIG.questionsPerGame) {
-        if (index < CONFIG.searchTiers.length - 1) {
-          setScreen('widen');
-        } else {
-          setErrorMsg("We searched up to 10km around your address but couldn't find enough street-level photos to play. Try somewhere closer to a town or city centre.");
-          setScreen('error');
-        }
-        return;
-      }
+      const qs = generateQuestions(records, lat, lng);
+      if (!qs.length) throw new Error('Could not generate enough questions. Try a different address.');
 
       updateProgress(92, 'Preloading images...');
       qs.forEach(q => { const img = new Image(); img.src = q.image_url; });
@@ -96,17 +75,9 @@ export default function NearMe() {
       setScreen('game');
     } catch (err) {
       console.error(err);
-      setErrorMsg('Something went wrong while loading. Please try again.');
+      setErrorMsg(err.message);
       setScreen('error');
     }
-  }
-
-  function resetToStart() {
-    setTierIndex(0);
-    setLatLng(null);
-    selectedPlaceRef.current = null;
-    setStartBtnEnabled(false);
-    setScreen('start');
   }
 
   function selectOption(idx) {
@@ -276,32 +247,13 @@ export default function NearMe() {
         </div>
       )}
 
-      {/* Widen prompt */}
-      {screen === 'widen' && (
-        <div className="screen screen-narrow" style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 48, marginBottom: 10 }}>{'\uD83D\uDD0E'}</div>
-          <h2 style={{ marginBottom: 12 }}>Not much to see here</h2>
-          <p style={{ color: '#555', marginBottom: 24, lineHeight: 1.5 }}>
-            We couldn&apos;t find enough street images close to your address. Want us to search a bit further out?
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 320, margin: '0 auto' }}>
-            <button onClick={() => runTier(tierIndex + 1)} style={primaryBtn}>
-              Yes, keep looking
-            </button>
-            <button onClick={resetToStart} style={secondaryBtn}>
-              Try a different address
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Error */}
       {screen === 'error' && (
         <div className="screen screen-narrow" style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 48, marginBottom: 10 }}>{'\u26A0\uFE0F'}</div>
-          <h2 style={{ color: '#dc3545', marginBottom: 15 }}>Too Quiet Out There</h2>
-          <p style={{ color: '#666', marginBottom: 20, lineHeight: 1.5 }}>{errorMsg}</p>
-          <button onClick={resetToStart} style={{ ...primaryBtn, maxWidth: 320, background: '#dc3545' }}>Try a different address</button>
+          <h2 style={{ color: '#dc3545', marginBottom: 15 }}>Something Went Wrong</h2>
+          <p style={{ color: '#666', marginBottom: 20 }}>{errorMsg}</p>
+          <button onClick={() => window.location.reload()} style={{ ...primaryBtn, maxWidth: 320, background: '#dc3545' }}>Try Again</button>
         </div>
       )}
     </div>

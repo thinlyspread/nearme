@@ -1,7 +1,7 @@
 import { CONFIG } from './config';
 import { haversineDistance } from './geo';
 
-export function generateQuestions(locationRecords, userLat, userLng, radiusMeters = CONFIG.radius) {
+export function generateQuestions(locationRecords, userLat, userLng) {
   const places = locationRecords
     .filter(r => r.latitude && r.longitude)
     .map(r => ({
@@ -12,7 +12,7 @@ export function generateQuestions(locationRecords, userLat, userLng, radiusMeter
       longitude: r.longitude,
       distance:  Math.round(haversineDistance(userLat, userLng, r.latitude, r.longitude)),
     }))
-    .filter(p => p.distance > 0 && p.distance <= radiusMeters);
+    .filter(p => p.distance > 0 && p.distance <= CONFIG.radius);
 
   const questions = [];
   const usedIds   = new Set();

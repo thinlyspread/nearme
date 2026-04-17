@@ -4,7 +4,6 @@ export const CONFIG = {
   minCachedLocations: 40,
   batchSize:          8,
   targetLocations:    50,
-  searchTiers:        [500, 2000, 5000, 10000],
 };
 
 export const VISION_CONFIG = {

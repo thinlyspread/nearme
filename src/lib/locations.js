@@ -1,7 +1,8 @@
 import { CONFIG } from './config';
-import { generateRandomPointNearby, getCoordinateHash } from './geo';
+import { getCoordinateHash } from './geo';
 import { checkStreetViewCoverage, getStreetName, analyzeImageQuality } from './api';
 import { fetchFromSupabase, saveToSupabase } from './supabase';
+import { fetchRoadPoints } from './osm';
 
 async function processPoint(point, hash) {
   try {
@@ -58,41 +59,37 @@ export async function getPointsForCoordinate(lat, lng, onProgress = () => {}) {
   }
 
   console.log('Cache MISS:', hash);
-  onProgress(15, 'Generating random points...');
+  onProgress(12, 'Finding roads nearby...');
 
-  const bands = [
-    { minDist:  50, maxDist: 150, count: 20 },
-    { minDist: 150, maxDist: 250, count: 20 },
-    { minDist: 250, maxDist: 350, count: 30 },
-    { minDist: 350, maxDist: 450, count: 30 },
-  ];
-  const randomPoints = bands.flatMap(b =>
-    Array.from({ length: b.count }, () =>
-      generateRandomPointNearby(lat, lng, b.minDist, b.maxDist)
-    )
-  );
+  const samplePoints = await fetchRoadPoints(lat, lng, CONFIG.radius, { maxPoints: 100, maxPerRoad: 8 });
 
-  const totalBatches   = Math.ceil(randomPoints.length / CONFIG.batchSize);
+  if (!samplePoints.length) {
+    throw new Error('No roads found near this address. Try a different address.');
+  }
+
+  console.log(`OSM returned ${samplePoints.length} road-biased points`);
+
+  const totalBatches   = Math.ceil(samplePoints.length / CONFIG.batchSize);
   const validLocations = [];
   let processed        = 0;
 
-  onProgress(20, `Checking ${randomPoints.length} points in ${totalBatches} batches...`);
+  onProgress(20, `Checking ${samplePoints.length} points in ${totalBatches} batches...`);
 
-  for (let i = 0; i < randomPoints.length; i += CONFIG.batchSize) {
+  for (let i = 0; i < samplePoints.length; i += CONFIG.batchSize) {
     if (validLocations.length >= CONFIG.targetLocations) {
       console.log(`Reached target of ${CONFIG.targetLocations} — stopping early.`);
       break;
     }
 
     const batchNum = Math.floor(i / CONFIG.batchSize) + 1;
-    const batch    = randomPoints.slice(i, i + CONFIG.batchSize);
+    const batch    = samplePoints.slice(i, i + CONFIG.batchSize);
 
     const results = await Promise.all(batch.map(p => processPoint(p, hash)));
     validLocations.push(...results.filter(r => r !== null));
     processed += batch.length;
 
     onProgress(
-      20 + (processed / randomPoints.length) * 38,
+      20 + (processed / samplePoints.length) * 38,
       `Batch ${batchNum}/${totalBatches} done — ${validLocations.length} locations found`
     );
   }

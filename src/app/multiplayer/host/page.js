@@ -3,8 +3,10 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { db } from '@/lib/supabase';
+import { CONFIG } from '@/lib/config';
 import { generateQuestions } from '@/lib/questions';
 import { getPointsForCoordinate } from '@/lib/locations';
+import { countRoadsNearby } from '@/lib/osm';
 import { TIME_LIMIT_MS } from '@/lib/scoring';
 import { useConfetti } from '@/lib/useConfetti';
 
@@ -44,6 +46,90 @@ export default function HostGame() {
   const addressInputRef  = useRef(null);
   const channelRef       = useRef(null);
   const timerRef         = useRef(null);
+  const mapDivRef        = useRef(null);
+  const mapInstanceRef   = useRef(null);
+  const markerRef        = useRef(null);
+  const circleRef        = useRef(null);
+  const markerLatLngRef  = useRef(null);
+
+  const [hasPin, setHasPin]                   = useState(false);
+  const [isVagueAddress, setIsVagueAddress]   = useState(false);
+  const [roadCount, setRoadCount]             = useState(null);
+  const [roadCountLoading, setRoadCountLoading] = useState(false);
+
+  const SPECIFIC_PLACE_TYPES = ['street_address', 'premise', 'subpremise', 'route', 'establishment', 'point_of_interest'];
+
+  function showPlaceOnMap(place) {
+    const loc = place.geometry.location;
+    const lat = typeof loc.lat === 'function' ? loc.lat() : loc.lat;
+    const lng = typeof loc.lng === 'function' ? loc.lng() : loc.lng;
+    const specific = (place.types || []).some(t => SPECIFIC_PLACE_TYPES.includes(t));
+
+    markerLatLngRef.current = { lat, lng };
+    setIsVagueAddress(!specific);
+    setHasPin(true);
+
+    if (!mapDivRef.current) return;
+
+    const position = { lat, lng };
+    const zoom = specific ? 17 : 13;
+
+    if (!mapInstanceRef.current) {
+      mapInstanceRef.current = new google.maps.Map(mapDivRef.current, {
+        center: position,
+        zoom,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+        clickableIcons: false,
+      });
+      markerRef.current = new google.maps.Marker({
+        position,
+        map: mapInstanceRef.current,
+        draggable: true,
+      });
+      circleRef.current = new google.maps.Circle({
+        map: mapInstanceRef.current,
+        center: position,
+        radius: CONFIG.radius,
+        strokeColor: '#5C6BC0',
+        strokeOpacity: 0.7,
+        strokeWeight: 2,
+        fillColor: '#5C6BC0',
+        fillOpacity: 0.10,
+        clickable: false,
+      });
+      circleRef.current.bindTo('center', markerRef.current, 'position');
+      markerRef.current.addListener('dragend', () => {
+        const p = markerRef.current.getPosition();
+        const coords = { lat: p.lat(), lng: p.lng() };
+        markerLatLngRef.current = coords;
+        setIsVagueAddress(false);
+        checkRoadDensity(coords.lat, coords.lng);
+      });
+    } else {
+      mapInstanceRef.current.setCenter(position);
+      mapInstanceRef.current.setZoom(zoom);
+      markerRef.current.setPosition(position);
+    }
+
+    checkRoadDensity(lat, lng);
+
+    setTimeout(() => {
+      if (mapInstanceRef.current) {
+        google.maps.event.trigger(mapInstanceRef.current, 'resize');
+        mapInstanceRef.current.setCenter(position);
+      }
+    }, 80);
+  }
+
+  async function checkRoadDensity(lat, lng) {
+    setRoadCountLoading(true);
+    setRoadCount(null);
+    const count = await countRoadsNearby(lat, lng, CONFIG.radius);
+    setRoadCountLoading(false);
+    setRoadCount(count);
+  }
 
   const isObserver = hostMode === 'observer';
   // How many players need to answer before auto-reveal
@@ -51,16 +137,29 @@ export default function HostGame() {
 
   // Google Places autocomplete
   useEffect(() => {
+    if (screen !== 'setup') {
+      // Drop map refs so a later return to setup re-initialises cleanly.
+      mapInstanceRef.current = null;
+      markerRef.current      = null;
+      circleRef.current      = null;
+      markerLatLngRef.current = null;
+      return;
+    }
     if (typeof google === 'undefined') return;
+    if (!addressInputRef.current) return;
     const autocomplete = new google.maps.places.Autocomplete(addressInputRef.current);
     autocomplete.addListener('place_changed', () => {
       const place = autocomplete.getPlace();
       const valid = !!(place && place.geometry);
       selectedPlaceRef.current = valid ? place : null;
       setStartBtnEnabled(valid && nickname.trim().length > 0);
-      if (!valid) alert('Please select a valid address from the suggestions');
+      if (!valid) {
+        alert('Please select a valid address from the suggestions');
+        return;
+      }
+      showPlaceOnMap(place);
     });
-  }, [nickname]);
+  }, [nickname, screen]);
 
   // Poll for new players in lobby
   useEffect(() => {
@@ -115,8 +214,14 @@ export default function HostGame() {
     const place = selectedPlaceRef.current;
     if (!place?.geometry || !nickname.trim()) return;
 
-    const lat = place.geometry.location.lat();
-    const lng = place.geometry.location.lng();
+    // Use the marker's current position (may have been dragged) rather than
+    // the raw autocomplete result.
+    const pin = markerLatLngRef.current || {
+      lat: place.geometry.location.lat(),
+      lng: place.geometry.location.lng(),
+    };
+    const lat = pin.lat;
+    const lng = pin.lng;
 
     const res = await fetch('/api/rooms', {
       method: 'POST',
@@ -140,8 +245,14 @@ export default function HostGame() {
 
   async function startGameGeneration() {
     const place = selectedPlaceRef.current;
-    const lat = place.geometry.location.lat();
-    const lng = place.geometry.location.lng();
+    // Marker may have been dragged on the setup screen — use the final pin
+    // position, falling back to the raw place coords if somehow unset.
+    const pin = markerLatLngRef.current || {
+      lat: place.geometry.location.lat(),
+      lng: place.geometry.location.lng(),
+    };
+    const lat = pin.lat;
+    const lng = pin.lng;
 
     setScreen('loading');
 
@@ -445,7 +556,97 @@ export default function HostGame() {
             </button>
           </div>
           <label style={{ display: 'block', marginBottom: 10, color: '#333', fontWeight: 'bold' }}>Enter Your Address:</label>
-          <input ref={addressInputRef} id="addressInput" type="text" placeholder="Start typing your address..." />
+          <input ref={addressInputRef} id="addressInput" type="text" placeholder="Start typing your address..." style={{ marginBottom: 12 }} />
+
+          {isVagueAddress && (
+            <div style={{
+              background: '#fff4d1',
+              border: '1px solid #e8b800',
+              color: '#7a5a00',
+              padding: '10px 14px',
+              borderRadius: 8,
+              fontSize: 14,
+              marginBottom: 10,
+              textAlign: 'left',
+              lineHeight: 1.4,
+            }}>
+              <strong>That&apos;s a broad area.</strong> Drag the pin to the exact spot you want to play from.
+            </div>
+          )}
+
+          <div style={{
+            position: 'relative',
+            width: '100%',
+            height: 220,
+            borderRadius: 8,
+            overflow: 'hidden',
+            marginBottom: 15,
+            background: '#eef1f5',
+            border: '1px dashed #c4cbd6',
+          }}>
+            <div ref={mapDivRef} style={{ width: '100%', height: '100%' }} />
+            {!hasPin && (
+              <div style={{
+                position: 'absolute',
+                inset: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#8a93a4',
+                fontSize: 14,
+                pointerEvents: 'none',
+                textAlign: 'center',
+                padding: 12,
+              }}>
+                <div style={{ fontSize: 28, marginBottom: 6 }}>{'\uD83D\uDDFA\uFE0F'}</div>
+                <div>Pick an address — a map will appear here.</div>
+              </div>
+            )}
+          </div>
+
+          {hasPin && (
+            <p style={{ fontSize: 12, color: '#888', marginBottom: 8, textAlign: 'left' }}>
+              Tip: drag the pin to adjust. The blue circle shows the search area.
+            </p>
+          )}
+
+          {hasPin && roadCountLoading && (
+            <p style={{ fontSize: 13, color: '#888', marginBottom: 12, textAlign: 'left' }}>
+              Checking nearby streets…
+            </p>
+          )}
+
+          {hasPin && !roadCountLoading && roadCount !== null && roadCount >= 10 && (
+            <p style={{
+              fontSize: 13,
+              color: '#2e7d32',
+              background: '#e8f5e9',
+              border: '1px solid #a5d6a7',
+              padding: '6px 10px',
+              borderRadius: 6,
+              marginBottom: 12,
+              textAlign: 'left',
+            }}>
+              {roadCount} streets nearby — good to go.
+            </p>
+          )}
+
+          {hasPin && !roadCountLoading && roadCount !== null && roadCount < 10 && (
+            <p style={{
+              fontSize: 13,
+              color: '#7a5a00',
+              background: '#fff4d1',
+              border: '1px solid #e8b800',
+              padding: '6px 10px',
+              borderRadius: 6,
+              marginBottom: 12,
+              textAlign: 'left',
+            }}>
+              Only {roadCount} {roadCount === 1 ? 'street' : 'streets'} nearby — the game may be short. Try dragging the pin somewhere denser.
+            </p>
+          )}
+
           <button disabled={!startBtnEnabled} onClick={createRoom}>Create Room</button>
           <div style={{ marginTop: 15 }}><a href="/" style={{ display: 'inline-block', background: '#f0f0f0', color: '#333', padding: '12px 24px', fontSize: 14, border: 'none', borderRadius: 8, cursor: 'pointer', textDecoration: 'none' }}>&larr; Back</a></div>
         </div>

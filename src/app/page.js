@@ -237,8 +237,11 @@ export default function NearMe() {
           <div style={{ fontSize: 48, marginBottom: 8 }}>{'\uD83D\uDCCD'}</div>
           <h1 style={{ fontSize: 42, marginBottom: 4 }}>NearMe</h1>
           <p style={{ color: '#999', fontSize: 13, marginBottom: 16 }}>v0.5.0</p>
-          <p style={{ color: '#555', fontSize: 18, marginBottom: 36, lineHeight: 1.5 }}>
+          <p style={{ color: '#555', fontSize: 18, marginBottom: 8, lineHeight: 1.5 }}>
             How well do you <em>really</em> know your neighbourhood?
+          </p>
+          <p style={{ color: '#888', fontSize: 13, marginBottom: 36, lineHeight: 1.4 }}>
+            (Works best in urban areas — based on Street View.)
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 320, margin: '0 auto' }}>
             <button onClick={() => setScreen('start')} style={{ ...primaryBtn, background: '#5C6BC0' }}>

@@ -21,11 +21,29 @@ export default function NearMe() {
   const [correctIdx, setCorrectIdx]           = useState(-1);
   const [nextEnabled, setNextEnabled]         = useState(false);
 
+  const [hasPin, setHasPin]                   = useState(false);
+  const [isVagueAddress, setIsVagueAddress]   = useState(false);
+
   const selectedPlaceRef = useRef(null);
   const addressInputRef  = useRef(null);
+  const mapDivRef        = useRef(null);
+  const mapInstanceRef   = useRef(null);
+  const markerRef        = useRef(null);
+  const markerLatLngRef  = useRef(null);
 
   useEffect(() => {
-    if (screen !== 'start') return;
+    if (screen !== 'start') {
+      // Map DOM node is unmounted when we leave this screen; drop refs so a
+      // later return to 'start' re-initialises against the new div.
+      mapInstanceRef.current = null;
+      markerRef.current      = null;
+      markerLatLngRef.current = null;
+      return;
+    }
+    // Re-entering the start screen: clear any stale pin state.
+    setHasPin(false);
+    setIsVagueAddress(false);
+
     if (typeof google === 'undefined') return;
     if (!addressInputRef.current) return;
     const autocomplete = new google.maps.places.Autocomplete(addressInputRef.current);
@@ -34,9 +52,69 @@ export default function NearMe() {
       const valid = !!(place && place.geometry);
       selectedPlaceRef.current = valid ? place : null;
       setStartBtnEnabled(valid);
-      if (!valid) alert('Please select a valid address from the suggestions');
+      if (!valid) {
+        alert('Please select a valid address from the suggestions');
+        return;
+      }
+      showPlaceOnMap(place);
     });
   }, [screen]);
+
+  // Types Google returns for specific-enough places. Anything outside this set
+  // (localities, postcodes, admin areas) is treated as vague and we prompt the
+  // user to drag the pin.
+  const SPECIFIC_PLACE_TYPES = ['street_address', 'premise', 'subpremise', 'route', 'establishment', 'point_of_interest'];
+
+  function showPlaceOnMap(place) {
+    const loc = place.geometry.location;
+    const lat = typeof loc.lat === 'function' ? loc.lat() : loc.lat;
+    const lng = typeof loc.lng === 'function' ? loc.lng() : loc.lng;
+    const specific = (place.types || []).some(t => SPECIFIC_PLACE_TYPES.includes(t));
+
+    markerLatLngRef.current = { lat, lng };
+    setIsVagueAddress(!specific);
+    setHasPin(true);
+
+    if (!mapDivRef.current) return;
+
+    const position = { lat, lng };
+    const zoom = specific ? 17 : 13;
+
+    if (!mapInstanceRef.current) {
+      mapInstanceRef.current = new google.maps.Map(mapDivRef.current, {
+        center: position,
+        zoom,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+        clickableIcons: false,
+      });
+      markerRef.current = new google.maps.Marker({
+        position,
+        map: mapInstanceRef.current,
+        draggable: true,
+      });
+      markerRef.current.addListener('dragend', () => {
+        const p = markerRef.current.getPosition();
+        markerLatLngRef.current = { lat: p.lat(), lng: p.lng() };
+        setIsVagueAddress(false); // user has now been specific
+      });
+    } else {
+      mapInstanceRef.current.setCenter(position);
+      mapInstanceRef.current.setZoom(zoom);
+      markerRef.current.setPosition(position);
+    }
+
+    // The map div grows from height:0 to 220 on the very first pin — Google
+    // Maps caches the initial (empty) size and won't redraw without a resize
+    // nudge. Fire one after React flushes the height change.
+    setTimeout(() => {
+      if (mapInstanceRef.current) {
+        google.maps.event.trigger(mapInstanceRef.current, 'resize');
+        mapInstanceRef.current.setCenter(position);
+      }
+    }, 80);
+  }
 
   function updateProgress(pct, text) {
     setProgress(pct);
@@ -47,8 +125,14 @@ export default function NearMe() {
     const place = selectedPlaceRef.current;
     if (!place?.geometry) { alert('Please select an address first'); return; }
 
-    const lat = place.geometry.location.lat();
-    const lng = place.geometry.location.lng();
+    // Use the marker's current position (may have been dragged) rather than
+    // the raw autocomplete result.
+    const pin = markerLatLngRef.current || {
+      lat: place.geometry.location.lat(),
+      lng: place.geometry.location.lng(),
+    };
+    const lat = pin.lat;
+    const lng = pin.lng;
     setAddress(place.formatted_address);
     setScreen('loading');
 
@@ -152,6 +236,41 @@ export default function NearMe() {
             Enter Your Address:
           </label>
           <input ref={addressInputRef} id="addressInput" type="text" placeholder="Start typing your address..." style={inputStyle} />
+
+          {isVagueAddress && (
+            <div style={{
+              background: '#fff4d1',
+              border: '1px solid #e8b800',
+              color: '#7a5a00',
+              padding: '10px 14px',
+              borderRadius: 8,
+              fontSize: 14,
+              marginBottom: 10,
+              textAlign: 'left',
+              lineHeight: 1.4,
+            }}>
+              <strong>That&apos;s a broad area.</strong> Drag the pin to the exact spot you want to play from.
+            </div>
+          )}
+
+          <div
+            ref={mapDivRef}
+            style={{
+              width: '100%',
+              height: hasPin ? 220 : 0,
+              borderRadius: 8,
+              marginBottom: hasPin ? 15 : 0,
+              overflow: 'hidden',
+              transition: 'height 0.2s ease',
+            }}
+          />
+
+          {hasPin && (
+            <p style={{ fontSize: 12, color: '#888', marginBottom: 12, textAlign: 'left' }}>
+              Tip: drag the pin to adjust.
+            </p>
+          )}
+
           <button disabled={!startBtnEnabled} onClick={startGame} style={primaryBtn}>
             Let&apos;s Go!
           </button>
